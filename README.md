@@ -50,6 +50,11 @@ Your idea could be something entirely new, an existing project you want to move 
 
 Once you have a Claude.ai account, this is all it takes to get started.
 
+All of the commands below are run in a **terminal** (also called a command line or shell). If you've never opened one before:
+
+- **macOS** — press `Cmd+Space`, type `Terminal`, press Enter
+- **Windows** — press `Win`, type `PowerShell`, press Enter (or use Windows Terminal if you have it)
+
 **macOS / Linux:**
 
 ```bash
