@@ -1,0 +1,1 @@
+../agents-library/karen-manager.md

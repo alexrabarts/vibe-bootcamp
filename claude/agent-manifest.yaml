@@ -1,0 +1,14 @@
+version: 1
+updated: 2025-11-24T15:30:00Z
+project_type: dotfiles-management
+detection_method: manual
+agents:
+  - name: karen-manager
+    source: karen-manager.md
+  - name: paige-technical-docs-writer
+    source: paige-technical-docs-writer.md
+  - name: wigsy-code-reviewer
+    source: wigsy-code-reviewer.md
+  - name: proompty-mc-proomptface-prompt-engineer
+    source: proompty-mc-proomptface-prompt-engineer.md
+notes: "Dotfiles repository with chezmoi templates. Added Proompty for prompt engineering and optimization."
