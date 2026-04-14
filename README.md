@@ -17,7 +17,7 @@ This repo gives you an opinionated but flexible foundation:
 
 - A **curated set of AI agents** with distinct specializations (backend, frontend, architecture, code review, etc.) that collaborate on your project
 - **Automated workflows** that handle planning, implementation, and review loops - so you spend time on decisions, not on babysitting the AI
-- A **production hosting blueprint** using battle-tested tools (Caddy, systemd, just) so deployment isn't an afterthought
+- A **production hosting blueprint** — either a self-managed VPS with battle-tested tools (Caddy, systemd, just) or a managed path with Vercel + Supabase — so deployment isn't an afterthought
 - **Support for multiple AI tools** - primarily Claude Code, but with equivalent setups for OpenAI Codex and ChatGPT
 
 The approach is opinionated so you can get moving fast, but everything is customizable once you understand the patterns.
@@ -83,7 +83,7 @@ Once Claude is running, paste this to kick things off:
 Read the README.md in this repo. I want to build [describe your idea briefly].
 Help me set up my project and walk me through getting it into production.
 Ask me any questions you need to understand what I'm building.
-Pre-work I've already done: [e.g. "I have a VPS at x.x.x.x and domain example.com pointed to it" or "nothing yet"]
+Pre-work I've already done: [e.g. "I have a VPS at x.x.x.x and domain example.com pointed to it" or "I have Vercel and Supabase accounts" or "nothing yet"]
 ```
 
 **That's it.** Claude will read this guide, ask you about your idea, help you pick a tech stack, set up your project, and walk you through production deployment step by step — including things like DNS and server configuration that can be tricky to do alone.
@@ -138,9 +138,22 @@ You'll need a domain name for your project. A `.dev`, `.app`, or `.xyz` domain c
 
 If you buy from a registrar other than Cloudflare, you'll need to point your domain's nameservers to Cloudflare (Cloudflare will walk you through this when you add the domain).
 
-### Buy VPS Hosting
+### Choose Your Hosting
 
-A VPS (Virtual Private Server) is the approach we'll use in this bootcamp because it gives you full control and works for any project type. There are other paths too — platforms like Vercel + Supabase, Railway, Fly.io, etc. — and Claude can help you explore those if they suit your project better. But a VPS is a solid default that teaches you the fundamentals.
+There are two solid paths to production. Pick the one that fits your project and comfort level:
+
+| | **VPS (self-managed)** | **Vercel + Supabase (managed)** |
+|---|---|---|
+| **Best for** | Any tech stack, full control, learning fundamentals | Next.js / React apps with a database |
+| **You manage** | The server, deployment, HTTPS, process management | Just your code and database schema |
+| **Cost** | ~$4-6/month (server) + domain | Free tier available, pay as you scale |
+| **Trade-off** | More to learn, but no vendor lock-in | Less ops work, but tied to specific platforms |
+
+Both paths are fully documented below. Claude will walk you through whichever you choose.
+
+#### Option A: VPS (Virtual Private Server)
+
+A VPS gives you a Linux server you fully control. It works for any tech stack and teaches you the fundamentals of deployment. If Hetzner doubles their prices tomorrow, you move to DigitalOcean in an afternoon.
 
 **Recommended providers:**
 
@@ -160,9 +173,28 @@ All of these are **month-to-month with no commitment** — most bill hourly, so 
 - Pick a datacenter close to your users
 - Set up SSH key authentication (the provider will walk you through this)
 
+#### Option B: Vercel + Supabase (Managed)
+
+If you're building a web app with Next.js or React and don't want to manage a server, Vercel + Supabase is an excellent combination. Vercel handles hosting and deployment, Supabase provides a PostgreSQL database with auth and storage built in.
+
+**Sign up for:**
+
+- **[Vercel](https://vercel.com)** - Frontend hosting with automatic deployments from GitHub. Free tier includes custom domains, HTTPS, and generous bandwidth.
+- **[Supabase](https://supabase.com)** - Managed PostgreSQL database with built-in auth, file storage, and real-time subscriptions. Free tier includes 500MB database, 1GB file storage, and 50,000 monthly active users.
+
+**Why this combination works:**
+
+- **Zero server management** - No SSH, no systemd, no Caddy config. Push to GitHub and it's live.
+- **Automatic HTTPS and CDN** - Vercel handles certificates and edge caching globally.
+- **Built-in auth** - Supabase Auth supports email/password, OAuth (Google, GitHub, etc.), and magic links out of the box.
+- **Database without ops** - Supabase gives you a full PostgreSQL database with a dashboard, REST API, and client libraries. No need to install, configure, or back up the database yourself.
+- **Scales automatically** - Both platforms scale with usage. You won't need to resize a server.
+
+**The trade-off:** You're coupled to these platforms. Migrating off Vercel means reworking your deployment pipeline; migrating off Supabase means exporting your PostgreSQL data and rebuilding auth. For most projects this is fine, but it's worth knowing.
+
 ### Set Up DNS
 
-Once you have your server's IP address, configure DNS in Cloudflare:
+**If using a VPS:** configure DNS in Cloudflare:
 
 1. Log into Cloudflare and add your domain (if not already added)
 2. Create an **A record** for your root domain:
@@ -175,6 +207,8 @@ Once you have your server's IP address, configure DNS in Cloudflare:
    - Proxy status: DNS only (grey cloud)
 
 The wildcard record means any subdomain (e.g., `api.yourdomain.com`, `staging.yourdomain.com`) will automatically point to your server. This is very handy for running multiple projects or environments on one server.
+
+**If using Vercel:** you can configure your custom domain directly in the Vercel dashboard (Project Settings > Domains). Vercel will provide the DNS records to add at your registrar or Cloudflare. This is straightforward and Vercel walks you through it.
 
 ---
 
@@ -477,7 +511,14 @@ To document learnings or issues as you go:
 
 ## Moving to Production
 
-Once your app is working locally, it's time to deploy. This section covers our opinionated production setup.
+Once your app is working locally, it's time to deploy. Choose the section that matches the hosting path you picked earlier.
+
+- **VPS path** — [Production with a VPS](#production-with-a-vps)
+- **Managed path** — [Production with Vercel + Supabase](#production-with-vercel--supabase)
+
+---
+
+## Production with a VPS
 
 ### Why This Approach
 
@@ -726,6 +767,132 @@ curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -
 
 ---
 
+## Production with Vercel + Supabase
+
+### Why This Approach
+
+If you don't want to manage a server, a managed platform lets you focus entirely on your application. The trade-off is that you're relying on specific vendors, but the development experience is excellent and the free tiers are generous enough for most projects.
+
+This approach is ideal when:
+
+- You're building with **Next.js or React** (Vercel's sweet spot)
+- You want a **database with auth and storage** without managing infrastructure
+- You prefer **git push to deploy** over SSH and systemd
+- You want to **stay on free tiers** as long as possible
+
+### The Stack
+
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Frontend hosting | Vercel | Automatic deployments, CDN, HTTPS |
+| Database | Supabase (PostgreSQL) | Managed database with REST API |
+| Auth | Supabase Auth | Email, OAuth, magic links |
+| File storage | Supabase Storage | User uploads, assets |
+| Task runner | just | Local development commands |
+| Source control | git + GitHub | Push-to-deploy trigger |
+
+### Setting Up Supabase
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Note your project URL and anon key from Settings > API
+3. Create your database tables using the Supabase dashboard SQL editor or the built-in table editor
+
+Your app connects to Supabase using the client library:
+
+```bash
+# Install the Supabase client (for Next.js/React projects)
+npm install @supabase/supabase-js
+```
+
+Store your Supabase credentials in environment variables:
+
+```bash
+# .env.local (never commit this file)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+Supabase provides Row Level Security (RLS) policies to control data access. **Always enable RLS on your tables** — without it, your anon key grants full read/write access to anyone.
+
+### Setting Up Vercel
+
+1. Push your project to GitHub
+2. Go to [vercel.com](https://vercel.com) and import your GitHub repository
+3. Vercel auto-detects Next.js projects and configures build settings
+4. Add your environment variables (Supabase URL and keys) in Project Settings > Environment Variables
+5. Deploy — Vercel builds and deploys automatically on every push to `main`
+
+**Custom domain:** Add your domain in Project Settings > Domains. Vercel provides the DNS records to add at your registrar.
+
+### Deployment Workflow
+
+With Vercel, deployment is automatic:
+
+```bash
+# 1. Make sure tests pass
+just test
+
+# 2. Commit and push
+git add -A && git commit -m "feat: add new feature"
+git push
+
+# That's it. Vercel builds and deploys automatically.
+```
+
+Every push to `main` triggers a production deployment. Pull requests get preview deployments with unique URLs — great for reviewing changes before they go live.
+
+### justfile for Managed Projects
+
+Even without a VPS, a justfile is useful for local development:
+
+```just
+# justfile
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Install dependencies
+deps:
+    npm install
+
+# Run locally for development
+dev:
+    npm run dev
+
+# Run test suite
+test:
+    npm test
+
+# Build for production (same as what Vercel runs)
+build:
+    npm run build
+
+# Generate Supabase types from your database schema
+db-types:
+    npx supabase gen types typescript --project-id your-project-id > src/lib/database.types.ts
+
+# Open Supabase dashboard
+db-dashboard:
+    open https://supabase.com/dashboard/project/your-project-id
+
+# Open Vercel dashboard
+dashboard:
+    open https://vercel.com/your-team/your-project
+```
+
+### Environment Variables
+
+Vercel and Supabase both have environment variable management:
+
+- **Local development:** Use `.env.local` (auto-loaded by Next.js, git-ignored by default)
+- **Vercel production:** Set in Project Settings > Environment Variables
+- **Supabase secrets:** For server-side operations, use the `SUPABASE_SERVICE_ROLE_KEY` (never expose this on the client side)
+
+**Important:** The `NEXT_PUBLIC_` prefix makes variables available in the browser. Only use this prefix for values that are safe to expose (like the Supabase anon key, which is meant to be public and protected by RLS policies). Keep service role keys and other secrets server-side only.
+
+---
+
 ## Troubleshooting
 
 ### Claude Code can't find agents
@@ -756,6 +923,29 @@ sudo journalctl -u caddy -f
 
 # Validate your Caddyfile
 caddy validate --config /etc/caddy/Caddyfile
+```
+
+### Vercel deployment failing
+
+```bash
+# Check the build logs in the Vercel dashboard
+# Common issues:
+# - Missing environment variables (add them in Project Settings > Environment Variables)
+# - Build command failing (run `just build` locally first to check)
+# - Node.js version mismatch (set in Project Settings > General > Node.js Version)
+```
+
+### Supabase connection issues
+
+```bash
+# Verify your environment variables are set correctly
+echo $NEXT_PUBLIC_SUPABASE_URL
+echo $NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+# Check that RLS policies allow the operation you're attempting
+# Go to Supabase Dashboard > Authentication > Policies
+# A common mistake: enabling RLS on a table but not adding any policies,
+# which blocks all access
 ```
 
 ### systemd service won't start
@@ -790,6 +980,8 @@ ls -la /srv/my-project/current/my-project
 - [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
 - [OpenAI Codex Documentation](https://platform.openai.com/docs)
 - [Caddy Documentation](https://caddyserver.com/docs/)
+- [Vercel Documentation](https://vercel.com/docs)
+- [Supabase Documentation](https://supabase.com/docs)
 - [just Documentation](https://just.systems/man/en/)
 - [Cloudflare DNS Setup](https://developers.cloudflare.com/dns/)
 
