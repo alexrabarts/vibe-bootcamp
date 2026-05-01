@@ -15,21 +15,16 @@ If this one doesn't fit, here are the most-starred Claude Code repos on GitHub. 
 | # | Repo | Stars | What it is | Differs from this guide |
 |---|------|-------|------------|-------------------------|
 | 1 | [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) | 171k | Cross-harness performance library: 48 agents, 182 skills, 68 commands, 34 rules, hooks | Massive generic skills/rules library across Claude/Codex/Cursor/OpenCode — no named-agent personas and no opinionated plan-then-review-loop tying them together |
-| 2 | [anthropics/claude-code](https://github.com/anthropics/claude-code) | 120k | The official Claude Code CLI itself | The underlying tool this guide configures — ships zero personas, slash commands, or planning workflow out of the box |
-| 3 | [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills) | 104k | Single CLAUDE.md with four Karpathy-derived coding-behavior principles | One drop-in guideline file — no named agents, no commands, no review loop; tunes behavior via principles rather than orchestrating specialists |
-| 4 | [garrytan/gstack](https://github.com/garrytan/gstack) | 88k | 23 role-based slash skills plus 8 power tools (CEO, Designer, Eng Manager, Release Manager, Doc Engineer, QA) | Closest analogue — also role-based and workflow-driven (Think-Plan-Build-Review-Ship-Reflect), but built around slash-command roles rather than named-personality subagents |
-| 5 | [thedotmack/claude-mem](https://github.com/thedotmack/claude-mem) | 71k | Plugin that captures session context, compresses it, and injects it into future sessions | A persistent-memory plugin, not a workflow setup — complements something like this guide rather than replacing it |
+| 2 | [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills) | 104k | Single CLAUDE.md with four Karpathy-derived coding-behavior principles | One drop-in guideline file — no named agents, no commands, no review loop; tunes behavior via principles rather than orchestrating specialists |
+| 3 | [garrytan/gstack](https://github.com/garrytan/gstack) | 88k | 23 role-based slash skills plus 8 power tools (CEO, Designer, Eng Manager, Release Manager, Doc Engineer, QA) | Closest analogue — also role-based and workflow-driven (Think-Plan-Build-Review-Ship-Reflect), but built around slash-command roles rather than named-personality subagents |
+| 4 | [gsd-build/get-shit-done](https://github.com/gsd-build/get-shit-done) | 59k | Spec-driven dev framework: 86 skills, 33 subagents, 20+ commands across Claude Code, OpenCode, Gemini CLI, and 12+ runtimes | Heavier framework focused on context engineering — spawns each task in a fresh 200K context to fight context rot and runs independent plan phases in parallel waves; richer machinery than this guide's plan-then-review loop |
+| 5 | [wshobson/agents](https://github.com/wshobson/agents) | 35k | Plugin marketplace: 184 specialized agents, 150 skills, 98 commands across 78 installable plugins | Modular marketplace where you install only the plugins you need — broader scale and domain coverage than this guide's fixed team, but no named-personality cohesion or built-in plan-then-review loop |
 
 ---
 
 ## Get Claude Running
 
 Once you have a Claude.ai account (Pro or Team plan), this is all it takes to get started.
-
-All of the commands below are run in a **terminal** (also called a command line or shell). If you've never opened one before:
-
-- **macOS** — press `Cmd+Space`, type `Terminal`, press Enter
-- **Windows** — press `Win`, type `PowerShell`, press Enter (or use Windows Terminal if you have it)
 
 **macOS / Linux:**
 
@@ -102,13 +97,13 @@ Full setup details for all platforms. If you followed the quick start above, mos
 
 #### macOS
 
-Install [Homebrew](https://brew.sh) first if you don't have it - it's the standard package manager for macOS and makes installing everything else easy:
+If you don't already have [Homebrew](https://brew.sh):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-Then install the tools you'll need:
+Then:
 
 ```bash
 brew install git just
@@ -116,9 +111,7 @@ brew install git just
 
 #### Windows
 
-Install [Git for Windows](https://git-scm.com/download/win) - choose the default options during installation. This also gives you Git Bash, which you'll use for terminal commands below.
-
-Install [just](https://github.com/casey/just#installation) (task runner):
+Install [Git for Windows](https://git-scm.com/download/win) (which includes Git Bash) and [just](https://github.com/casey/just#installation):
 
 ```bash
 winget install Git.Git Casey.Just
@@ -196,9 +189,7 @@ Copy-Item -Recurse -Force claude $env:USERPROFILE\.claude
 
 If you prefer to use OpenAI Codex instead of Claude Code, equivalent configurations are provided in the `codex/` directory.
 
-**Install Codex:**
-
-Codex requires Node.js 18+. Install it from [nodejs.org](https://nodejs.org) or via your package manager if you don't have it.
+**Install Codex** (requires Node.js 18+):
 
 ```bash
 npm install -g @openai/codex
@@ -289,9 +280,9 @@ Run `/setup-agents list` to see all available agents.
 
 ### Plan Your Feature
 
-Both Claude Code and Codex have a **plan mode** - a mode where the AI thinks through the problem, explores your codebase, and proposes an approach *without actually writing or modifying any files*. This is one of the most important habits to build: always plan before you implement. It prevents the AI from charging off in the wrong direction, and it gives you a chance to course-correct before any code is written.
+Both Claude Code and Codex have a **plan mode** — the AI explores the codebase and proposes an approach without writing or modifying files. Always plan before you implement; it stops the model from charging off in the wrong direction and gives you a chance to course-correct before any code is written.
 
-To enter plan mode, press **Shift+Tab** to toggle it on (works in both Claude Code and Codex). You can also type `/plan` in Codex.
+Toggle plan mode with **Shift+Tab** (works in both Claude Code and Codex). You can also type `/plan` in Codex.
 
 Describe what you want to build:
 
