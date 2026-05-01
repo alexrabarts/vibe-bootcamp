@@ -105,19 +105,19 @@ Add an alias to save typing:
 **macOS / Linux** — add to `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-alias c-dsp='claude --dangerously-skip-permissions'
+alias cc='claude --dangerously-skip-permissions'
 ```
 
 Then reload your shell (`source ~/.zshrc` or open a new terminal) and use:
 
 ```bash
-c-dsp
+cc
 ```
 
 **Windows (PowerShell)** — add to your PowerShell profile (`notepad $PROFILE`):
 
 ```powershell
-function c-dsp { claude --dangerously-skip-permissions @args }
+function cc { claude --dangerously-skip-permissions @args }
 ```
 
 ---
