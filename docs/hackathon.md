@@ -435,6 +435,7 @@ Or manually pick agents:
 | Agent | Specialty |
 |-------|-----------|
 | Shane | Go backend development |
+| Monty | Python backend development, APIs, data pipelines |
 | Oliver | React/Next.js frontend with shadcn/ui |
 | Amber | UX design and prototyping |
 | DBA Dan | Database design and optimization |

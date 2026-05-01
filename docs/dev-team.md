@@ -4,6 +4,24 @@ This guide is for engineering teams adopting Claude Code in existing repositorie
 
 ---
 
+## This Is Just One Setup
+
+The configuration in this repo is my personal opinionated take — the agents, slash commands, and workflows I use day-to-day. I'm not pitching it as the right answer. The point is that you should be running **something like this**, not nothing.
+
+If you point Claude Code at a production codebase with no agents, no planning workflow, and no review loop, you'll get output that looks plausible and breaks in subtle ways. The scaffolding (specialist agents, plan-before-implement, automated review) is what gets you from "AI generated some code" to "AI generated code I'd ship." Pick a setup, learn its patterns, and stick with it long enough to internalize the workflow.
+
+If this one doesn't fit, here are the most-starred Claude Code repos on GitHub. Their approaches differ from this one in distinct ways — read the right column to see how:
+
+| # | Repo | Stars | What it is | Differs from this guide |
+|---|------|-------|------------|-------------------------|
+| 1 | [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) | 171k | Cross-harness performance library: 48 agents, 182 skills, 68 commands, 34 rules, hooks | Massive generic skills/rules library across Claude/Codex/Cursor/OpenCode — no named-agent personas and no opinionated plan-then-review-loop tying them together |
+| 2 | [anthropics/claude-code](https://github.com/anthropics/claude-code) | 120k | The official Claude Code CLI itself | The underlying tool this guide configures — ships zero personas, slash commands, or planning workflow out of the box |
+| 3 | [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills) | 104k | Single CLAUDE.md with four Karpathy-derived coding-behavior principles | One drop-in guideline file — no named agents, no commands, no review loop; tunes behavior via principles rather than orchestrating specialists |
+| 4 | [garrytan/gstack](https://github.com/garrytan/gstack) | 88k | 23 role-based slash skills plus 8 power tools (CEO, Designer, Eng Manager, Release Manager, Doc Engineer, QA) | Closest analogue — also role-based and workflow-driven (Think-Plan-Build-Review-Ship-Reflect), but built around slash-command roles rather than named-personality subagents |
+| 5 | [thedotmack/claude-mem](https://github.com/thedotmack/claude-mem) | 71k | Plugin that captures session context, compresses it, and injects it into future sessions | A persistent-memory plugin, not a workflow setup — complements something like this guide rather than replacing it |
+
+---
+
 ## Get Claude Running
 
 Once you have a Claude.ai account (Pro or Team plan), this is all it takes to get started.
@@ -253,6 +271,7 @@ Or manually pick agents:
 | Agent | Specialty |
 |-------|-----------|
 | Shane | Go backend development |
+| Monty | Python backend development, APIs, data pipelines |
 | Oliver | React/Next.js frontend with shadcn/ui |
 | Amber | UX design and prototyping |
 | DBA Dan | Database design and optimization |

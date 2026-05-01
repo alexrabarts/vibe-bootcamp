@@ -13,6 +13,7 @@ This directory contains ALL agents - both universal and specialized - in a flat 
 
 ### Backend
 - **Shane** (shane-go-backend-dev.md) - Go service development with DuckDB/PostgreSQL; cynical and snarky
+- **Monty** (monty-python-backend-dev.md) - Python backend development, APIs, data pipelines, packaging; professorial and precise
 - **DBA Dan** (dba-dan-database-expert.md) - Database design, optimization, and query tuning; very friendly and helpful
 
 ### Design

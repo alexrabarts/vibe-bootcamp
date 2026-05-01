@@ -116,6 +116,7 @@ All agents are in `~/.claude/agents-library/` with a flat structure. See `MANIFE
 
 **Backend:**
 - `shane-go-backend-dev` (Shane) - Go service development with DuckDB/PostgreSQL; cynical and snarky
+- `monty-python-backend-dev` (Monty) - Python backend development, APIs, data pipelines, packaging; professorial and precise
 - `dba-dan-database-expert` (DBA Dan) - Database design, optimization, and query tuning; very friendly and helpful
 
 **Frontend:**

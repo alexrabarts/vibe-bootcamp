@@ -1398,7 +1398,7 @@ Examples:
 
 Generate plan file with this structure:
 
-```markdown
+````markdown
 # [Plan Title]
 
 **Created:** [ISO 8601 timestamp]
@@ -1632,7 +1632,7 @@ See "Alternative Approaches Considered" section above for approaches not selecte
 ```
 
 [End of plan file]
-```
+````
 
 ### Write Plan File
 
