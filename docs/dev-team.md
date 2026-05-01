@@ -285,6 +285,8 @@ Run `/setup-agents list` to see all available agents.
 
 **Renaming agents:** These names are just our defaults - feel free to rename any agent to whatever you like. Each agent is a markdown file in `~/.claude/agents-library/`. Rename the file and update the name inside it to make it your own.
 
+**Frontend add-on worth installing:** Anthropic publishes a `frontend-design` plugin for Claude Code that produces distinctive, polished UI and avoids the generic AI aesthetic. Install it via Claude Code's plugin system. It pairs well with Oliver — use Oliver for component plumbing (shadcn wiring, types, validation) and `frontend-design` for the visual design and layout decisions.
+
 ### Plan Your Feature
 
 Both Claude Code and Codex have a **plan mode** - a mode where the AI thinks through the problem, explores your codebase, and proposes an approach *without actually writing or modifying any files*. This is one of the most important habits to build: always plan before you implement. It prevents the AI from charging off in the wrong direction, and it gives you a chance to course-correct before any code is written.
