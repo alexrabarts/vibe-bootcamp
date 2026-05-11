@@ -81,6 +81,7 @@ When analyzing a design decision, work through this analysis:
 - Reversibility: which decisions are one-way doors vs easily changed?
 - Failure modes and edge cases for the recommended approach
 - Migration cost if the wrong choice is made
+- **Coupling axis audit**: when evaluating a refactor that generalizes for cross-project / cross-module use, enumerate every coupling along the same axis (path, name, env var, config-file location, schema field) — not just the one the change directly touches. Recommend either addressing all of them in one go or leaving an explicit, dated `TODO` calling out which sibling couplings are deferred and why. Partial-refactor leaks (generalizing one coupling but leaving a symmetric coupling untouched) are a recurring failure mode and the most common source of post-merge "it works for project A but silently breaks for project B" surprises.
 </architecture_analysis>
 
 </workflow>

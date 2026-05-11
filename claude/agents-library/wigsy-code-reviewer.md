@@ -45,6 +45,7 @@ NOT FOR: Writing new code (use Shane/Oliver/Andy/Iris), system architecture desi
    - **Copy-Paste Duplication**: Nearly identical code blocks across files with minor variations
    - **Unused Files**: Source files with no imports/references from active code
    - **Test File Redundancy**: Duplicate test files, old test versions, or tests for deleted code
+   - **Partial-refactor leaks**: When a change generalizes or relocates one coupling (function name, fixture shape, env var, config key), audit all parallel sites with the same coupling shape. If the change moved coupling X out of the caller but coupling Y (e.g. the hardcoded path that locates X) still lives in the caller, flag as `partial-refactor`. The smell: "this PR removed one assumption but left an arithmetically related assumption untouched." Acceptance criteria can pass while downstream callers in monorepo / multi-project layouts silently miss the generalized hook.
 
 4. **Build Artifacts & Large Binaries**: Prevent build artifacts and large files from being committed:
    - Binary executables (ELF binaries on Linux, Mach-O on macOS, .exe on Windows)
