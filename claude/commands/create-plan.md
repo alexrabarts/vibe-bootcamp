@@ -1,8 +1,8 @@
 ---
-description: Create a comprehensive plan through systematic investigation and multi-hypothesis analysis
+description: Create a comprehensive plan through systematic investigation, multi-hypothesis analysis, and an interactive decision checkpoint
 ---
 
-You are the Plan Creation Orchestrator. Your role is to guide thorough problem investigation and solution design before implementation begins. You will execute this WITHOUT user approval between phases, proceeding systematically through exploration, analysis, design, and review.
+You are the Plan Creation Orchestrator. Your role is to guide thorough problem investigation and solution design before implementation begins. You proceed autonomously through most phases — Phase 2.5 is the one designated checkpoint where you ask the user 2–4 focused questions to resolve load-bearing decisions before committing to a design. All other phases (exploration, analysis, design, review, output) run without further user approval.
 
 ## Core Philosophy
 
@@ -775,6 +775,85 @@ Option 3: [Action]
 [Additional options...]
 ```
 
+## PHASE 2.5: Interactive Decision Checkpoint
+
+After Phase 2 selects a PRIMARY hypothesis/approach, and before Phase 3 begins detailed design, grill the user on the load-bearing decisions that — if answered differently — would invalidate the downstream plan. This is the single user-interactive moment in `/create-plan`. Use it sparingly: the goal is to catch high-leverage forks, not to interrogate.
+
+### When to Skip This Phase
+
+Skip if any of these are true:
+- The task is trivial (single-file edit, obvious bug fix with one cause)
+- Phase 2 hypotheses converge on the same fix, or all approaches share the same load-bearing decisions
+- The user explicitly said "just plan it", "no questions", or similar
+- No open questions surfaced in Phase 1 AND no terminology mismatches were detected AND hypotheses don't diverge on user-priority trade-offs
+
+If skipping, log clearly: `[Phase 2.5] Skipped — no load-bearing ambiguities detected.` and continue to Phase 3.
+
+### Question Selection
+
+Identify 2–4 questions worth asking. Source them from:
+
+1. **Open questions from Phase 1 exploration** — items in the "Questions Requiring Answers" section that couldn't be resolved by reading code alone
+2. **Hypothesis/approach forks** — when Hypothesis 1 and Hypothesis 2 require fundamentally different fixes, ask which behavior is "correct"
+3. **Terminology mismatches** — when user-supplied terms diverge from codebase vocabulary, confirm which term is authoritative
+4. **Scope boundaries** — when it's unclear whether a related concern is in or out of scope
+5. **Trade-off forks** — sync vs. async, additive vs. breaking migration, etc. — where the right answer depends on user priorities not visible in code
+
+**Hard cap: 4 questions.** If you have more candidates, pick the ones with the highest blast radius — the ones that, if answered the other way, would reshuffle the most of the downstream plan.
+
+### Question Format
+
+Use the `AskUserQuestion` tool with these rules:
+
+- **One decision per question** — never compound ("should we do X and Y?")
+- **The first option is the recommendation**, labelled `(Recommended)` at the end of its label, with the rationale in the description
+- **2–3 alternative options** the user can pick instead
+- The user can always select "Other" to write a custom answer
+
+Example question:
+
+```
+Question: "The handler at api/foo.go:42 does synchronous DB writes today.
+For the new write path, sync or async?"
+
+Options:
+- "Async via job queue (Recommended)" — matches existing internal/jobs/ pattern,
+  decouples API latency from write throughput
+- "Sync, with new index on foo.bar" — simpler request lifecycle, requires schema change
+- "Hybrid — sync for small payloads, async above threshold" — most flexible,
+  most complexity
+```
+
+### Sequential, Not Batched
+
+Ask questions one at a time. Each answer may invalidate or reshape subsequent questions — e.g., if the user picks "out of scope" for question 1, a planned question about that area becomes moot. Re-evaluate the remaining question list after each answer before posing the next one.
+
+### After Checkpoint
+
+Once questions are resolved (or the phase was skipped):
+
+1. Capture each decision in a "Resolved Decisions" block
+2. Update the PRIMARY hypothesis/approach if any answer changed it
+3. Pass resolved decisions explicitly to Phase 3 planning agents as named constraints
+
+Output format:
+
+```
+RESOLVED DECISIONS:
+
+1. Q: [Question asked]
+   A: [User's answer, plus any rationale they added]
+   Impact on plan: [Specifically what this constrains downstream]
+
+2. Q: [Question asked]
+   A: [User's answer]
+   Impact on plan: [Specifically what this constrains downstream]
+
+[Additional resolved decisions...]
+```
+
+Resolved decisions are appended to the plan file in Phase 5 (under a "Resolved Decisions" section) so `/implement-plan` and future readers can see what was settled and why the plan committed to a particular fork.
+
 ## PHASE 3: Design & Planning
 
 In this phase, take the PRIMARY hypothesis (debugging) or RECOMMENDED approach (feature) and flesh it out into an implementation plan.
@@ -1420,6 +1499,20 @@ Generate plan file with this structure:
 ### Approach
 [Which hypothesis or approach was selected and why]
 
+## Resolved Decisions
+
+Decisions settled during the Phase 2.5 checkpoint that constrain the plan. Omit this section if no questions were asked.
+
+### Decision 1: [Question topic]
+**Question:** [Question posed to user]
+**Answer:** [User's chosen option, with any rationale they provided]
+**Impact on plan:** [What this constrains downstream — e.g., "Phase 1 uses job queue, not sync writes"]
+
+### Decision 2: [Question topic]
+[Same structure]
+
+[Additional decisions as needed...]
+
 ## Alternative Approaches Considered
 
 ### Approach 1: [Name]
@@ -1727,12 +1820,22 @@ Provide clear progress updates at each phase transition:
 [Phase 2] Beginning Multi-Hypothesis Analysis...
 ```
 
-### Phase 2 → Phase 3
+### Phase 2 → Phase 2.5
 ```
 [Phase 2] Analysis Complete
   Hypotheses Generated: [N]
   Primary Hypothesis: [Brief description]
   Likelihood: HIGH (based on [key evidence])
+
+[Phase 2.5] Identifying load-bearing decisions to grill...
+```
+
+### Phase 2.5 → Phase 3
+```
+[Phase 2.5] Checkpoint Complete
+  Questions Asked: [N]
+  Decisions Resolved: [N]
+  [If skipped]: Skipped — no load-bearing ambiguities detected
 
 [Phase 3] Creating Implementation Plan for Primary Hypothesis...
 ```
@@ -1972,7 +2075,7 @@ If task description omitted, use conversation context to infer task.
 6. **Multi-agent review** - Eric, Dan (if DB), Wigsy always review
 7. **Progress transparency** - Clear reporting at each phase
 8. **Graceful degradation** - Handle missing agents and insufficient context
-9. **User decision points** - Ask when architectural decisions are ambiguous
+9. **User decision points** - In Phase 2.5, ask the user about load-bearing decisions that can't be resolved from code alone (max 4 questions, recommended answer attached, sequential not batched)
 10. **Document alternatives** - Preserve all approaches considered for future reference
 
 ## Execution Flow Summary
@@ -1999,6 +2102,13 @@ Phase 2: Multi-Hypothesis Analysis
     ├─ Structure each option with evidence
     ├─ Rank by likelihood/feasibility
     └─ Select PRIMARY option (user can override)
+    ↓
+Phase 2.5: Interactive Decision Checkpoint
+    ├─ Identify 2-4 load-bearing decisions (max 4)
+    ├─ Ask one question at a time with recommended answer
+    ├─ Re-evaluate question list after each answer
+    ├─ Skip cleanly if no ambiguities detected
+    └─ Pass resolved decisions to Phase 3 as constraints
     ↓
 Phase 3: Design & Planning
     ├─ Launch planning agents (Shane, Eric, Dan, etc.)

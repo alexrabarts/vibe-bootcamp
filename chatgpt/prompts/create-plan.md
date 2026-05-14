@@ -20,6 +20,8 @@ Please follow this process:
 
 **Phase 3 - Compare:** Create a comparison table across: complexity, maintainability, performance, testability, time to deliver, risk level. Recommend one approach with clear reasoning.
 
+**Phase 3.5 - Resolve key decisions:** Before fleshing out the detailed plan, identify 2–4 load-bearing decisions where answering differently would invalidate the plan (e.g., terminology mismatches, scope boundaries, sync vs. async forks, additive vs. breaking changes). Ask me one focused question at a time. For each question, propose your recommended answer with rationale, plus 2–3 alternatives, and wait for my answer before asking the next. Skip this step if the recommended approach has no genuine forks. Record the resolved decisions in the final saved plan under a "Resolved Decisions" section.
+
 **Phase 4 - Detail the plan:** For the recommended approach, create a phased implementation plan. For each phase:
 - Goal
 - Specific files to modify (with description of changes)

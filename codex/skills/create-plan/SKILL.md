@@ -55,6 +55,23 @@ Create a comparison of all approaches across these criteria:
 
 Recommend one approach with clear reasoning. Note conditions under which an alternative would be better.
 
+### Phase 4.5: Resolve Key Decisions
+
+Before fleshing out the detailed plan, surface 2–4 load-bearing decisions that — if answered differently — would invalidate the plan. Ask the user one focused question at a time and propose your recommended answer (with rationale) plus 2–3 alternatives. Wait for the user's answer before posing the next.
+
+Source questions from:
+- Open questions from Phase 2 exploration that couldn't be resolved by reading code
+- Forks where two approaches require fundamentally different fixes
+- Terminology mismatches between user language and codebase vocabulary
+- Scope boundaries (in vs. out of scope)
+- Trade-off forks where the right answer depends on user priorities (sync vs. async, additive vs. breaking migration, etc.)
+
+**Hard cap: 4 questions.** Pick the ones with the highest blast radius.
+
+Skip this phase if the task is trivial, all approaches share the same load-bearing decisions, or the user explicitly said "just plan it." Log clearly when skipped.
+
+Record each resolved decision in a "Resolved Decisions" block to carry into Phase 5 as named constraints. Include this block in the final saved plan file so future readers see what was settled and why.
+
 ### Phase 5: Detail the Implementation Plan
 
 For the recommended approach, create a phased plan:
