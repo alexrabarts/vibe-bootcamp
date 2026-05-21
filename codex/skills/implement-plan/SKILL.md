@@ -1,3 +1,8 @@
+---
+name: implement-plan
+description: Implement an existing plan phase by phase with verification and self-review. Use when the user asks to implement a saved plan, continue from a plan file, execute planned work, or run the plan implementation workflow.
+---
+
 # Implement Plan
 
 Automatically implement a plan with iterative development and self-review loops.

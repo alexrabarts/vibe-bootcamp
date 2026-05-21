@@ -13,7 +13,7 @@ This repo serves two audiences. Pick the guide that matches your situation:
 ## What's in the Repo
 
 - **`claude/`** — Agents, slash commands, and configuration for Claude Code. Copied to `~/.claude` during setup.
-- **`codex/`** — Equivalent skills for OpenAI Codex.
+- **`codex/`** — OpenAI Codex skills for the workflow commands and specialist agent personas.
 - **`chatgpt/`** — Prompt templates and custom instructions for the ChatGPT / Codex web app.
 
 ## License

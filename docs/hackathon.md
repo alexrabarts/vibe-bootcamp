@@ -366,11 +366,11 @@ npm install -g @openai/codex
 # Create the codex config directory
 mkdir -p ~/.codex/skills
 
-# Copy skills (equivalent to Claude Code's slash commands)
+# Copy skills (workflow commands plus specialist agent personas)
 cp -r codex/skills/* ~/.codex/skills/
 ```
 
-Codex uses a "Skills" system that's functionally similar to Claude Code's slash commands. Each skill is a directory with a `SKILL.md` file that contains the prompt and instructions. See the `codex/` directory for the full set.
+Codex uses a "Skills" system for both slash-command style workflows and specialist personas. This repo includes workflow skills such as `$create-plan`, `$implement-plan`, and `$code-review`, plus Codex-native versions of the named agents such as `$shane-go-backend-dev`, `$oliver-shadcn-ui-builder`, `$dba-dan-database-expert`, and `$wigsy-code-reviewer`. Each skill is a directory with a `SKILL.md` file that contains the prompt and instructions. See the `codex/` directory for the full set.
 
 **Note:** Codex skills are invoked differently from Claude Code commands. In Codex, you can reference a skill with `$skill-name` in your prompt, or Codex may automatically select an appropriate skill based on your task description.
 

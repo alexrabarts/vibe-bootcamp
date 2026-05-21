@@ -1,3 +1,8 @@
+---
+name: create-plan
+description: Create a comprehensive implementation plan before coding. Use for non-trivial features, bug fixes, refactors, investigations, or when the user asks to plan, explore approaches, compare options, or save a plan file.
+---
+
 # Create Plan
 
 Create a comprehensive implementation plan through systematic investigation and multi-approach analysis before writing any code.

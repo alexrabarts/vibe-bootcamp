@@ -1,3 +1,8 @@
+---
+name: code-review
+description: Review code changes before commit or merge. Use when the user asks for a review, pre-commit check, staged diff review, last-commit review, or wants security, correctness, test, and quality feedback on recent changes.
+---
+
 # Code Review
 
 Perform a comprehensive code review of recent changes, including running the test suite.

@@ -1,3 +1,8 @@
+---
+name: update-doc
+description: Capture project learnings, known issues, SOPs, backlog ideas, and architectural decisions in agent documentation. Use when the user asks to document a lesson, update project knowledge, record an issue, or add workflow notes.
+---
+
 # Update Documentation
 
 Add learnings, issues, SOPs, or feature ideas to the project's `.agent/` documentation directory.
