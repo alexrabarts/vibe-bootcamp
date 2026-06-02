@@ -1,0 +1,11 @@
+{
+  "reported_mode": "DEBUGGING",
+  "plan_file": ".claude/plans/fix-dau-undercount-20260601.md",
+  "used_checkpoint": true,
+  "checkpoint_questions": [
+    {"options": ["Tenant-local day (Recommended)", "UTC calendar day"], "single_decision": true}
+  ],
+  "output_tokens": 73500,
+  "wall_clock_s": 142.0,
+  "transcript": "[Phase 0] Mode: DEBUGGING\n[Phase 2.5] Asking 1 load-bearing question\n"
+}

@@ -1,0 +1,18 @@
+{
+  "default": "recommended",
+  "rules": [
+    {
+      "match": "user.?local|server|utc|time ?zone|which time|local monday|whose .*time",
+      "answer": "User-local time",
+      "note": "Weekly send should be anchored to the user's local week, not the server/UTC week. This is the load-bearing fork."
+    },
+    {
+      "match": "digest|report|terminolog|same thing|refer to|mean by",
+      "answer": "Yes — 'report' and 'digest' are the same thing"
+    },
+    {
+      "match": "scope|all cadences|daily|monthly|only weekly|just weekly|other cadence",
+      "answer": "Weekly only for now"
+    }
+  ]
+}

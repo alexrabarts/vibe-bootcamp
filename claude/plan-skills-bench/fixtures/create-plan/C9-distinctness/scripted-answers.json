@@ -1,0 +1,14 @@
+{
+  "default": "recommended",
+  "rules": [
+    {
+      "match": "postgres|external|engine|elastic|opensearch|tsvector|which .*search|approach|in.?database",
+      "answer": "Postgres full-text search",
+      "note": "Stay within Postgres for the stated scale; do not stand up an external search service for v1."
+    },
+    {
+      "match": "title only|full body|scope|search scope|body text|what .*search",
+      "answer": "Full body (title and body)"
+    }
+  ]
+}

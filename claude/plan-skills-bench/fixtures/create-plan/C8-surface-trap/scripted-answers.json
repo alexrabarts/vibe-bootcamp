@@ -1,0 +1,15 @@
+{
+  "default": "recommended",
+  "rules": [
+    {
+      "match": "tenant.?local|utc (calendar )?day|local day|timezone|which day|day boundary",
+      "answer": "Tenant-local day",
+      "note": "Counts should reflect the tenant's local calendar day; events are stored in UTC and must be converted. This is the load-bearing fork — it makes the correct fix span the whole window, not just the clamp."
+    },
+    {
+      "match": "scope|also fix|include the handler|auth|role check",
+      "answer": "Out of scope — the role check is unrelated; fix only the DAU windowing.",
+      "note": "Guards against the skill widening scope to a decoy."
+    }
+  ]
+}

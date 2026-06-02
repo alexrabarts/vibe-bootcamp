@@ -1,0 +1,10 @@
+{
+  "default": "recommended",
+  "rules": [
+    {
+      "match": "risk|incremental|big.?bang|rewrite|behaviou?r.?preserv|scope of .*refactor|how far",
+      "answer": "Behavior-preserving, incremental",
+      "note": "Keep observable behavior identical; prefer small safe extractions with characterization tests over a rewrite."
+    }
+  ]
+}

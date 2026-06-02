@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dimension", "score", "verdict", "evidence", "refutation_attempt"],
+  "properties": {
+    "dimension": {
+      "type": "string",
+      "description": "The L3 dimension being judged, e.g. 'distinctness' or 'criteria_met'."
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Anchored 1-5 score. See the dimension's rubric for what each anchor means."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["strong", "adequate", "weak", "fails"],
+      "description": "Coarse bucket. strong=5, adequate=3-4, weak=2, fails=1."
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Direct quotes or file:line references from the artifact that justify the score."
+    },
+    "refutation_attempt": {
+      "type": "string",
+      "description": "The strongest case AGAINST the artifact you could construct, and whether it holds. Required even for high scores — if you cannot mount a refutation, say why the artifact is robust."
+    },
+    "matches_answer_key": {
+      "type": ["boolean", "null"],
+      "description": "For correctness dims (correct_primary, criteria_met): does the artifact agree with the ground-truth answer key? null if not applicable to this dimension."
+    }
+  }
+}

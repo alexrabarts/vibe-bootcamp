@@ -1,0 +1,5 @@
+{
+  "default": "recommended",
+  "rules": [],
+  "note": "No load-bearing fork exists. The checkpoint should be skipped; this answerer is a safety net only. Any question the skill asks here counts as over-asking and is penalized via checkpoint_leverage."
+}

@@ -1,0 +1,10 @@
+{
+  "default": "recommended",
+  "rules": [
+    {
+      "match": "decimal|precision|round|how .*display|format the average",
+      "answer": "One decimal place",
+      "note": "Display precision is a minor product choice, not load-bearing; provided in case the skill asks. The preferred behavior is to skip the checkpoint entirely."
+    }
+  ]
+}

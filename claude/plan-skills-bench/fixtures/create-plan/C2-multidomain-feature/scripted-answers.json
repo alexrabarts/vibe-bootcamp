@@ -1,0 +1,14 @@
+{
+  "default": "recommended",
+  "rules": [
+    {
+      "match": "blob|normalized|schema|json column|criteria table|how .*store|data model",
+      "answer": "JSON blob column",
+      "note": "Ship a single saved_filters row per saved set with the criteria as a JSON column; favor speed-to-ship for v1."
+    },
+    {
+      "match": "shareable|share|private|other users|team|scope|visibility",
+      "answer": "Private to the user for v1"
+    }
+  ]
+}

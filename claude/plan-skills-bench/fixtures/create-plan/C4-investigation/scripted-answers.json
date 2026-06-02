@@ -1,0 +1,5 @@
+{
+  "default": "recommended",
+  "rules": [],
+  "note": "Investigation only; the checkpoint should be skipped. Safety net if the skill asks (it generally should not for a pure 'help me understand' request)."
+}

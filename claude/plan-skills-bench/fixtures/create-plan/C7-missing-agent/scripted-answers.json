@@ -1,0 +1,5 @@
+{
+  "default": "recommended",
+  "rules": [],
+  "note": "Unused — the run must STOP at Phase 0 before reaching the Phase 2.5 checkpoint. If the skill ever reaches a question here, that itself is a failure (it proceeded past the missing-agent gate)."
+}
