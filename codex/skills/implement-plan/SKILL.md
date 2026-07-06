@@ -16,14 +16,26 @@ Use this skill after creating a plan (either via the `create-plan` skill or manu
 - A plan file exists (check `.codex/plans/` or ask the user to specify)
 - If no plan file is found, ask the user what to implement or suggest running the `create-plan` skill first
 
+## Multi-Repo Plans
+
+A plan may span **several repositories** (e.g. a backend repo plus its frontend consumer, or the same change across many repos). When it does:
+
+- Work each repo independently — implement, test, and review it on its own.
+- Run **each repo's own test suite** (each repo may use a different test command).
+- Never assume changes in one repo are visible in another — they are separate git histories.
+- Do a **cross-repo review** at the end: verify the seams line up (API/DTO contracts, shared types, config keys, versioning). A mismatch between repos is a critical issue.
+- Report results **per repo**, and remember each repo is committed separately by the user.
+
+Single-repo plans are just the one-repo case — nothing extra to do.
+
 ## Process
 
 ### Phase 1: Read and Analyze the Plan
 
 1. Read the plan file
 2. Identify the implementation phases
-3. Determine what files need to be created or modified
-4. Check if any dependencies need to be installed
+3. Determine which **repositories** the plan touches, and which files in each need to be created or modified
+4. Check if any dependencies need to be installed (in each repo)
 
 ### Phase 2: Implement Phase by Phase
 
@@ -57,8 +69,8 @@ If tests fail or you spot issues during self-review:
 
 After all phases are complete:
 
-1. Run the full test suite
-2. Review all changes holistically (do the pieces fit together?)
+1. Run the full test suite (in every repo the plan touched)
+2. Review all changes holistically (do the pieces fit together?) — for multi-repo plans, explicitly check the cross-repo seams: API/DTO contracts, shared types, config keys, and versioning must line up between the repos
 3. Check for:
    - Unused imports or dead code
    - Missing error handling

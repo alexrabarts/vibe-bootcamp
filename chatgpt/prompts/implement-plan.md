@@ -6,6 +6,8 @@ Paste the following into ChatGPT when you're ready to implement a plan. Referenc
 
 Please implement the plan we created for **[feature name]**. Work through it phase by phase:
 
+If the plan spans **multiple repositories** (e.g. a backend repo plus its frontend consumer), work each repo independently: implement and run each repo's own tests separately, and at the end do a cross-repo review to confirm the seams line up (API/DTO contracts, shared types, config keys, versioning) — a mismatch between repos is a critical issue. Report results per repo; each repo is committed separately.
+
 For each phase:
 1. Tell me what you're about to implement
 2. Write the code (create new files, modify existing ones as the plan specifies)

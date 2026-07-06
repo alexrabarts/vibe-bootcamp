@@ -161,8 +161,9 @@ This command provides sophisticated autonomous workflow orchestration:
 2. **Verifies availability** - Checks if required agents are configured, prompts you to run `/setup-agents` if not
 3. **Multi-reviewer validation** - Eric reviews architecture, Dan reviews database design, Wigsy reviews security
 4. **Smart parallelization** - Uses git worktrees to run independent work streams in parallel when safe
-5. **Automated dev-review loop** - Implements → Wigsy reviews → fixes issues → repeats (max 5 iterations)
-6. **Auto-conflict resolution** - Merges parallel work with best-effort conflict resolution
+5. **Multi-repo support** - A plan can span several repos; worktrees, integration branches, tests, and cleanup fan out per repo, with a single cross-repo Wigsy review that checks the contract seams between them
+6. **Automated dev-review loop** - Implements → Wigsy reviews → fixes issues → repeats (max 5 iterations)
+7. **Auto-conflict resolution** - Merges parallel work with best-effort conflict resolution
 
 **Key features:**
 - Fully automatic execution (no approval needed between iterations)

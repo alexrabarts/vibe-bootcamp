@@ -26,6 +26,14 @@ If the user has not compacted and context is limited, proceed anyway but be awar
 6. Handle conflict resolution and agent coordination
 7. Provide clear progress reporting throughout execution
 
+## Multi-Repo Support
+
+A plan often spans **several repositories** — e.g. a backend service repo plus its frontend consumer repo, or the same mechanical change fanned across many repos. This orchestrator handles that first-class: each work item is scoped to the repo it lives in, and worktrees, integration branches (`integration-<timestamp>` — one PER repo), test runs, fix passes, and cleanup all fan out **per repo**. Repos are separate git histories, so you never merge across them.
+
+The one deliberately cross-repo step is **review**: a single Wigsy pass sees every repo's diff so it can catch mismatches on the seams between them (API/DTO contracts, shared types, event/message shapes, config keys, feature flags, versioning). Flag any such mismatch as CRITICAL.
+
+Single-repo plans are just the one-repo case of the same machinery. `SIMPLE_SEQUENTIAL` stays a single-repo fast path — **any plan touching 2+ repos must use a worktree mode** (`AGENT_PARALLEL` / `HYBRID_PARALLEL` / `FULL_PARALLEL`), because you cannot stage uncommitted work across multiple repos on "the current branch." Read every "repo root" / "integration branch" mention below as "for the repo this work item belongs to," and replicate per-repo steps for each repo in play.
+
 ## Available Specialist Agents
 
 **Implementers:**
@@ -215,9 +223,15 @@ This aggregated feedback will be provided to all implementers.
 
 ## PHASE 2: Parallelization Analysis
 
+### Step 0: Identify the Repositories
+
+Before decomposing work, determine every repository the plan touches. Read the plan for repo names/paths and resolve each to an absolute working-tree path (confirm with `git -C <path> rev-parse --show-toplevel` when unsure). Note each repo's test command using the same heuristics as the Test Execution phase (`just test`, `npm test`, `go test ./...`, etc.).
+
+Every work item you produce below MUST be scoped to one of these repos. If the plan touches only one repo, all items share it. **If it touches 2+ repos, the execution mode CANNOT be `SIMPLE_SEQUENTIAL`** — choose a worktree mode so each repo gets its own integration branch, and replicate the per-repo setup/integration/test/cleanup steps for each.
+
 ### Step 1: Identify Work Streams (Agent Level)
 
-Analyze the plan to identify distinct work streams by agent:
+Analyze the plan to identify distinct work streams by agent (and, in multi-repo plans, by repo — a work stream is scoped to one agent in one repo):
 
 **Backend Work (Shane):**
 - API endpoints, handlers, services
@@ -345,10 +359,12 @@ This determines agent-level parallelization (unchanged from current behavior).
    - Threshold: Only parallelize if items estimated >2 minutes each
 
 3. **Parallelization modes:**
-   - **SIMPLE_SEQUENTIAL**: One agent, sequential work
+   - **SIMPLE_SEQUENTIAL**: One agent, one repo, sequential work
    - **AGENT_PARALLEL**: Multiple agents in parallel, each agent sequential internally
    - **HYBRID_PARALLEL**: Multiple agents in parallel, PLUS within-agent parallelization
    - **FULL_PARALLEL**: Single agent with internal parallelization
+
+   **Multi-repo overrides the "simple" case:** a plan spanning 2+ repos is inherently parallel across repos (distinct git dirs, distinct integration branches), so it is never `SIMPLE_SEQUENTIAL`. Pick the mode that fits the within-repo work, and fan setup/integration/test/cleanup out per repo.
 
 **Report format:**
 
@@ -416,6 +432,9 @@ Configuration:
 - **MAX_ITERATIONS**: 5 (applies to the final review loop)
 - **Current Iteration**: Start at 1
 - **Execution Mode**: Determined in Phase 2 (SIMPLE_SEQUENTIAL, AGENT_PARALLEL, HYBRID_PARALLEL, FULL_PARALLEL)
+- **Repos**: The repository set from Phase 2 Step 0 (one or many)
+
+**Multi-repo (applies to every step below):** when the plan spans 2+ repos, everything in this phase fans out PER repo. Each repo is an independent git dir with its own `integration-<timestamp>` branch. Concretely: create worktrees inside each item's own repo; merge/integrate only within a repo (never merge across repos — separate histories); run each repo's own test suite; and clean up each repo's worktrees/branches separately. The one cross-repo step is the **review** — a single Wigsy pass sees every repo's diff so it can flag mismatches on the seams between them (API/DTO contracts, shared types, config keys, versioning). The examples below use a single repo for brevity; replicate them per repo when there are several.
 
 ### Setup Phase
 
@@ -1301,8 +1320,10 @@ NEXT STEPS:
 - Review the changes with: git diff
 - Test the implementation
 - Commit when satisfied: git add . && git commit
+  (Multi-repo: each repo has its own integration-<timestamp> branch — review and
+   commit each repo separately.)
 
-All changes are staged and ready for commit.
+All changes are staged (single repo) or on each repo's integration branch (multi-repo) and ready for review.
 ═══════════════════════════════════════════════════════════
 ```
 
