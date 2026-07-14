@@ -22,9 +22,9 @@ _JUDGE_DIR = Path(__file__).resolve().parent.parent / "judges"
 # Which L3 dimensions apply, by create-plan mode. acceptance_pass / convergence_efficiency are
 # deterministic (computed in checks.py), so they are NOT judged here.
 _CREATE_DIMS = {
-    "DEBUGGING": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability"],
-    "FEATURE": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability"],
-    "REFACTOR": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability"],
+    "DEBUGGING": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage"],
+    "FEATURE": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage"],
+    "REFACTOR": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage"],
     "INVESTIGATION": ["evidence_grounding", "actionability"],
 }
 
@@ -175,6 +175,8 @@ def dimensions_for(scenario: ScenarioKey, artifacts: RunArtifacts) -> list[str]:
     dims = ["criteria_met"]
     if scenario.raw.get("cruft_to_find"):
         dims.append("cruft_flagged")
+    if scenario.raw.get("coupled_sites"):
+        dims.append("drift_caught")
     return dims
 
 

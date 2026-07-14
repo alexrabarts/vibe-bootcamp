@@ -312,6 +312,7 @@ INVESTIGATION CHECKLIST:
 6. List existing tests and coverage gaps
 7. Highlight recent changes in git history
 8. Identify dead code, unused imports, orphaned functions, and stale TODOs in affected areas
+9. Map coupled sites: for every value, type, contract, or behavior the change touches, grep THIS repo AND sibling repos for every other occurrence (shared REST/gRPC/GraphQL shapes, DTOs, protobuf, OpenAPI/JSON schemas, generated clients, mirrored constants/enums, consumer repos, version pins, duplicated declarations, schema + validator + migration) and locate every doc describing the behavior (README, API docs, CLAUDE.md, .agent/, CHANGELOG, config/env-var reference, in-code examples)
 
 DO NOT:
 - Propose solutions yet
@@ -342,6 +343,9 @@ Provide structured findings:
 
 ## Dead Code & Cruft
 [Unused imports, orphaned functions, dead code paths, stale TODOs found in affected areas]
+
+## Coupled Sites & Drift Risks
+[For every value/type/contract/behavior the change touches, each other site that must change in lockstep or silently drift out of sync. Record each with repo + file:line + type (cross-repo contract, consumer repo, mirrored constant/enum, same-repo duplication, or doc describing the behavior). Write "None — change is self-contained" if truly isolated. Flag any site living in a repo not yet in scope.]
 
 ## Questions Requiring Answers
 [Ambiguities or unknowns discovered]
@@ -386,6 +390,9 @@ RECENT ACTIVITY:
 
 DEAD CODE & CRUFT:
 [Unused imports, orphaned functions, dead code paths, stale TODOs, and files eligible for removal identified by exploration agents]
+
+COUPLED SITES & DRIFT RISKS:
+[Sites that must change in lockstep with this change, each tagged repo + file:line + type (cross-repo contract, consumer repo, mirrored constant/enum, same-repo duplication, or doc describing the behavior). "None — change is self-contained" if isolated. If any site lives in a repo not yet in the plan's repo set, flag it for inclusion.]
 
 OPEN QUESTIONS:
 [Ambiguities that need clarification]
@@ -895,6 +902,10 @@ For each file to be modified:
 - Desired state (what will change)
 - Specific functions/components affected
 
+## Ripple Effects / Coupled Sites
+
+For every value/type/contract/behavior this change touches, list each other site that must change in lockstep, tagging each with repo + type: cross-repo contract (REST/gRPC/GraphQL shape, DTO, protobuf, OpenAPI/JSON schema, client SDK/generated client, mirrored constant/enum, consumer repo, version pin), same-repo duplication (a constant/enum/type/string in more than one place, schema + validator + migration, config + code + tests, feature flag in several files, generated code + its source, type + its serializer), or documentation (README, API docs, CLAUDE.md, .agent/, CHANGELOG, config/env-var reference, code comments/examples). If a coupled site lives in a repo not yet in the plan's repo set, pull that repo in. Write "None — change is self-contained" if isolated.
+
 ## New Components
 
 For each new component to create:
@@ -1088,6 +1099,9 @@ Files to Delete:
 Code to Remove:
 - [Dead code, unused functions, stale imports to clean up, or "None"]
 
+Ripple Effects / Coupled Sites:
+- [Each site that must change in lockstep, tagged repo + type + why it couples (cross-repo contract, consumer, mirrored constant/enum, same-repo duplication, doc), or "None — change is self-contained"]
+
 Database Changes:
 - [Migration description or "None"]
 
@@ -1152,6 +1166,7 @@ SUCCESS CRITERIA
 - [ ] [Specific functional requirement met]
 - [ ] [Specific functional requirement met]
 - [ ] No performance degradation
+- [ ] No coupled site left stale — docs and cross-repo contracts consistent
 - [ ] Documentation updated
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1200,6 +1215,7 @@ YOUR REVIEW FOCUS:
 - Maintainability and extensibility
 - Integration approach and coupling
 - Design patterns and best practices
+- Ripple-effect completeness: whether the plan enumerates every coupled site a change implies (cross-repo contracts, shared types, mirrored constants) and pulls in any repo those sites live in
 - Risk assessment (architectural risks)
 
 Provide feedback in these categories:
@@ -1278,6 +1294,7 @@ YOUR REVIEW FOCUS:
 - Testing coverage and quality
 - Code quality and maintainability
 - Adherence to project coding standards
+- Coupled-site completeness: hunt for MISSED sites that must change in lockstep — cross-repo contracts/consumers, mirrored constants/enums, same-repo duplication, and docs describing the changed behavior. A missed site that breaks a contract or leaves a consumer repo stale is CRITICAL; a missed doc or comment is a WARNING.
 
 Provide feedback in these categories:
 
@@ -1554,6 +1571,9 @@ Decisions settled during the Phase 2.5 checkpoint that constrain the plan. Omit 
 **Code to Remove:**
 - `path/to/file.go`: Remove unused function `OldFunction()`, stale imports [or "None"]
 
+**Ripple Effects / Coupled Sites:**
+- `repo/path/to/file.go:NN`: [Why it couples — cross-repo contract, consumer repo, mirrored constant/enum, same-repo duplication, or doc describing the behavior] [or "None — change is self-contained"]
+
 **Database Changes:**
 - Migration: [Description or "None"]
 - Schema: [Changes or "No schema changes"]
@@ -1638,6 +1658,7 @@ After implementation, verify success by:
 - [ ] No performance degradation (if applicable)
 - [ ] Documentation updated
 - [ ] No dead code, unused imports, or orphaned files remaining
+- [ ] No coupled site left stale — docs and cross-repo contracts updated in lockstep
 - [ ] Code review passed
 
 ## Assumptions
@@ -2077,6 +2098,7 @@ If task description omitted, use conversation context to infer task.
 8. **Graceful degradation** - Handle missing agents and insufficient context
 9. **User decision points** - In Phase 2.5, ask the user about load-bearing decisions that can't be resolved from code alone (max 4 questions, recommended answer attached, sequential not batched)
 10. **Document alternatives** - Preserve all approaches considered for future reference
+11. **Anti-drift discipline** - Enumerate every coupled site a change touches (cross-repo contracts, docs, same-repo duplication) in a "Ripple Effects / Coupled Sites" section; reviewers hunt for missed sites; no coupled site left stale, and any repo a coupled site lives in is pulled into the plan's repo set
 
 ## Execution Flow Summary
 
@@ -2093,6 +2115,7 @@ Phase 1: Systematic Exploration
     ├─ Launch exploration agents (Shane, Oliver, Dan, etc.)
     ├─ Trace from entry points inward (layer-by-layer)
     ├─ Examine tests and git history
+    ├─ Map coupled sites across this + sibling repos (drift risk)
     ├─ Document findings thoroughly
     └─ Aggregate exploration findings
     ↓
@@ -2120,7 +2143,7 @@ Phase 3: Design & Planning
 Phase 4: Multi-Agent Review
     ├─ Eric reviews architecture (parallel)
     ├─ Dan reviews database (parallel, if applicable)
-    ├─ Wigsy reviews security/quality (parallel)
+    ├─ Wigsy reviews security/quality + hunts for missed coupled sites (parallel)
     ├─ Proompty reviews prompts (parallel, if applicable)
     ├─ Aggregate feedback
     ├─ If critical items → Revise plan

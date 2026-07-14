@@ -156,10 +156,10 @@ def main() -> int:
 
     print("\n[7] L3 judges")
     tc = load_template("create-plan")
-    check(bool(tc.preamble) and {"distinctness", "correct_primary", "checkpoint_leverage"} <= set(tc.dims),
-          "create-plan judge template: preamble + dimensions parsed")
+    check(bool(tc.preamble) and {"distinctness", "correct_primary", "checkpoint_leverage", "coupled_site_coverage"} <= set(tc.dims),
+          "create-plan judge template: preamble + dimensions parsed (incl. coupled_site_coverage)")
     ti = load_template("implement-plan")
-    check({"criteria_met", "cruft_flagged"} <= set(ti.dims), "implement-plan judge template: dimensions parsed")
+    check({"criteria_met", "cruft_flagged", "drift_caught"} <= set(ti.dims), "implement-plan judge template: dimensions parsed (incl. drift_caught)")
 
     prompt = render(tc, "distinctness", {"answer_key": "AK-MARK", "plan": "PLAN-MARK", "questions_asked": "Q"})
     check("AK-MARK" in prompt and "PLAN-MARK" in prompt and "{answer_key}" not in prompt,
@@ -172,11 +172,15 @@ def main() -> int:
     check(agg_j["matches_answer_key"] is True, "judge aggregation: majority matches_answer_key")
 
     check(set(dimensions_for(by_id(scns, "C4"), RunArtifacts())) == {"evidence_grounding", "actionability"},
-          "dimensions_for: INVESTIGATION drops distinctness/correct_primary")
+          "dimensions_for: INVESTIGATION drops distinctness/correct_primary/coupled_site_coverage")
     check("correct_primary" in dimensions_for(by_id(scns, "C8"), RunArtifacts(used_checkpoint=True)),
           "dimensions_for: C8 includes correct_primary (has true_primary)")
+    check("coupled_site_coverage" in dimensions_for(by_id(scns, "C8"), RunArtifacts(used_checkpoint=True)),
+          "dimensions_for: C8 (DEBUGGING) includes coupled_site_coverage")
     check("cruft_flagged" in dimensions_for(by_id(scns, "I10"), RunArtifacts()),
           "dimensions_for: I10 includes cruft_flagged")
+    check("drift_caught" in dimensions_for(by_id(scns, "I10"), RunArtifacts()),
+          "dimensions_for: I10 includes drift_caught (has coupled_sites)")
     check(dimensions_for(by_id(scns, "I6"), RunArtifacts()) == [], "dimensions_for: STOP scenario (I6) judges nothing")
 
     # end-to-end judging: a high-scoring mock judge raises the create-plan L3 and feeds the score

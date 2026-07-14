@@ -91,6 +91,9 @@ into the score.
 - `correct_primary` — primary/recommended matches answer key (C8 esp.: deep cause, not the decoy)
 - `checkpoint_leverage` — checkpoint questions are load-bearing (would flip the plan), not trivial
 - `actionability` — an implementer could follow the plan without re-deriving it
+- `coupled_site_coverage` — the plan enumerates the sites that must change in lockstep (cross-repo
+  contract consumers, same-repo duplicated constants/enums/types, docs) so nothing drifts out of
+  sync; DEBUGGING/FEATURE/REFACTOR (not INVESTIGATION)
 
 ---
 
@@ -131,6 +134,9 @@ into the score.
 - `criteria_met` — meets the plan's stated success criteria (judge vs criteria)
 - `convergence_efficiency` — iterations-to-green (I4); fewer is better, tracked across versions
 - `cruft_flagged` — leftover debug/dead code flagged (I10)
+- `drift_caught` — every coupled site (cross-repo contract consumer, same-repo duplicated constant,
+  doc) updated in lockstep and any residual drift flagged; cross-repo drift is sneakiest since local
+  tests stay green while a sibling repo breaks (fires when the answer key lists `coupled_sites`; I10)
 
 ---
 

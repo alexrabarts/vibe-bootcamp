@@ -115,3 +115,26 @@ Anchors:
 
 In `refutation_attempt`, name the phase or criterion an implementer would get stuck on.
 ```
+
+## coupled_site_coverage
+
+```
+Dimension: coupled_site_coverage. Score whether the plan ENUMERATES the sites that must change in
+lockstep with this change so nothing silently drifts out of sync — cross-repo contract consumers
+(client SDKs, DTOs, OpenAPI/protobuf schemas, version pins), same-repo duplicated constants / enums
+/ types, and the docs that describe the changed behavior. A change to a producer that leaves its
+consumers, duplicated definitions, or docs stale is the failure this dimension catches.
+
+Anchors:
+5 — A thorough "Ripple Effects / Coupled Sites" enumeration: every consumer/duplicate/doc that must
+    move with the change is listed and tagged by repo + type (contract-consumer / duplicated-constant
+    / doc), so an implementer updates them in lockstep; cross-repo consumers are explicitly named.
+3 — Some coupled sites named, but the enumeration is partial — one class is missed (e.g. lists
+    same-repo duplicates but ignores cross-repo consumers, or omits the docs).
+1 — The plan changes one site and ignores its duplicates/consumers/docs entirely; ripple effects are
+    unaddressed, leaving coupled sites to drift.
+
+In `evidence`, quote the plan's coupled-site / ripple-effect enumeration (repo + type tags if
+present). In `refutation_attempt`, name the most load-bearing consumer, duplicated definition, or doc
+the plan failed to enumerate — cross-repo consumers are the easiest to miss.
+```

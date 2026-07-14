@@ -176,6 +176,7 @@ Invoke Wigsy to review:
 - Data validation requirements
 - Error handling strategy
 - Logging and monitoring needs
+- Coupled-site completeness: whether the plan accounts for every site that must change in lockstep — cross-repo contracts and consumers (DTOs, protobuf/OpenAPI/JSON schemas, generated clients, mirrored constants/enums, version pins), same-repo duplication (schema + validator + migration, config + code + tests, feature flags in several files), and docs describing the changed behavior. A missed contract or stale consumer repo is CRITICAL; a missed doc or comment is a WARNING.
 
 Ask Wigsy to identify issues that should be addressed during implementation.
 
@@ -619,6 +620,8 @@ The code from those items is available in your working directory base.
 - Include appropriate tests for your work item (CRITICAL: tests will be run automatically)
 - Ensure tests actually verify the implementation works correctly
 - Add clear comments for complex logic
+- Update EVERY coupled site your change touches, in lockstep — mirrored constants/enums, duplicated declarations, a schema and its validator/migration, config + code + tests, generated code and its source, a type and its (de)serializer, and any doc or comment describing the changed behavior. Do not update the primary site and leave its twins stale.
+- If a coupled site lives OUTSIDE this work item's scope (another repo or another work item), call it out explicitly in your completion report so it isn't silently dropped.
 - DO NOT commit changes - leave them staged or unstaged
 - DO NOT implement other work items - they are being handled separately
 
@@ -1018,6 +1021,13 @@ CRUFT CHECK: Specifically look for and flag as WARNING:
 - Stale TODOs or FIXMEs that reference completed work
 - Leftover debug logging (console.log, fmt.Println for debugging, etc.)
 - Files that should have been deleted as part of this change
+
+DRIFT CHECK: Flag any change whose coupled sites were NOT updated in lockstep:
+- A constant/enum/type/string/contract changed in one place but left stale in another within this repo
+- A schema, its validator, and its migration out of sync; a config value that disagrees with code or tests; a feature flag updated in some registrations but not others; generated code out of sync with its source
+- Docs, comments, or in-code examples describing behavior that changed (README, API docs, CLAUDE.md, .agent/, CHANGELOG, config/env-var reference)
+- Cross-repo drift is the sneakiest — the stale site is in a DIFFERENT repo, so THIS repo's tests pass green while a sibling silently breaks. Check cross-repo contract consumers (DTOs, protobuf/OpenAPI/JSON schemas, generated clients, mirrored constants, version pins) explicitly even when local tests are green.
+Severity: contract-breaking drift (breaks a contract or leaves a consumer repo stale) is CRITICAL; doc/comment drift is WARNING.
 ```
 
 ### Loop Decision Logic
@@ -1189,6 +1199,7 @@ Please assess what documentation is needed and create or update it. Consider:
 - Configuration reference for new options or environment variables
 - CLAUDE.md updates if new patterns, conventions, or architecture decisions were introduced
 - Changelog entry summarizing what was added or changed
+- Reconcile EVERY doc that describes behavior this change altered, across ALL affected repos — not just this one. A consumer repo's README, API reference, or CLAUDE.md can silently drift out of sync with a contract change made here.
 
 Focus only on documentation that is genuinely needed. Do not create documentation for
 internal implementation details. Do not duplicate what is already clearly documented.
@@ -1285,6 +1296,7 @@ Report:
 - No CRITICAL issues remaining
 - No WARNING issues remaining
 - No dead code or cruft flagged in final review
+- No coupled sites left stale — docs and cross-repo contracts updated in lockstep with the code
 
 **PARTIAL Criteria:**
 - Maximum iterations reached
@@ -1442,6 +1454,7 @@ No changes have been made to the codebase.
 8. **Consultant Pattern**: Dan advises Shane but never implements directly
 9. **Clean State**: Always clean up worktrees and temporary branches
 10. **Actionable Output**: Final report must clearly state next steps for user
+11. **No Drift**: Every coupled site changes in lockstep — cross-repo contracts, docs, and same-repo duplication. Implementers update all in-scope sites and call out out-of-scope ones; Wigsy flags contract-breaking drift as CRITICAL and doc/comment drift as WARNING, checking cross-repo consumers even when local tests pass green
 
 ## Execution Flow Summary
 
@@ -1502,6 +1515,7 @@ Phase 3: Implementation with Review Loop (max 5 review iterations)
   │
   ├─ Review: Wigsy reviews all integrated changes + test results
   │   ├─ Test failures included as CRITICAL issues
+  │   ├─ Cruft + coupled-site drift flagged (contract-breaking drift CRITICAL, doc/comment WARNING)
   │   └─ No test coverage noted as WARNING
   │
   ├─ Review iteration decision:

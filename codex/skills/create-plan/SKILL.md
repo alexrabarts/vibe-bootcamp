@@ -30,6 +30,12 @@ Before proposing any solution:
 5. Identify dependencies and integration points
 6. List existing tests and coverage gaps
 7. Check recent git history for relevant changes
+8. Discover **coupled sites** — for every value, type, contract, or behavior the change will touch, grep THIS repo AND sibling repos for every other occurrence, and locate docs describing the behavior. Coupled sites drift silently out of sync unless changed in lockstep. Look for three kinds:
+   - **Cross-repo**: a shared contract (API shape, DTO, protobuf, OpenAPI/JSON schema), a client SDK or generated client, a mirrored constant/enum, a consumer repo that hard-codes the shape, a version pin
+   - **Documentation**: README, API docs, CLAUDE.md, `.agent/` docs, CHANGELOG, config/env-var reference, code comments and in-code examples describing the changed behavior
+   - **Same-repo duplication**: a constant/enum/type/string in more than one place, schema + validator + migration, a value in config AND code AND tests, a feature flag registered in several files, generated code + its source, a type + its (de)serializer
+
+   Record each coupled site with repo + file:line + type.
 
 **Do NOT propose solutions during exploration. Gather facts first.**
 
@@ -92,8 +98,9 @@ For each phase:
 
 Include:
 - **Testing strategy**: Unit tests, integration tests, manual testing steps
+- **Ripple Effects / Coupled Sites**: Enumerate every coupled site found in Phase 2 (repo + type + why it couples), so each is updated in lockstep with its source. Write "None — self-contained" if there are none. If a coupled site lives in a repo not already in the plan's repo set, flag it explicitly so that repo is added to the plan.
 - **Risks and mitigations**: For each identified risk
-- **Success criteria**: Clear, testable conditions for completion
+- **Success criteria**: Clear, testable conditions for completion — including that no coupled site is left stale and that docs and cross-repo contracts stay consistent
 - **Assumptions**: Things that need to be true for the plan to work
 
 ### Output

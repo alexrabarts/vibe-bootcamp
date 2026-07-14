@@ -17,6 +17,12 @@ cruft_to_find:
   - "Leftover debug logging: print('DEBUG normalize_email:', ...) inside normalize_email."
   - "Dead function _legacy_format_phone (uncalled, wrong/old format)."
   - "Commented-out reference line inside format_phone."
+coupled_sites:
+  - "_legacy_format_phone duplicates format_phone's formatting logic in the OLD format; when
+     format_phone changes, this same-repo duplicated definition drifts stale and must be updated or
+     removed in lockstep (here: removed, since it is dead)."
+  - "The phone-format example in the module docstring / README describes the output shape; a doc that
+     still shows the old format after format_phone changes is stale drift."
 ```
 
 ## Notes

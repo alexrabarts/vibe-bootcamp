@@ -5,9 +5,9 @@ One prompt per dimension. Render with `{plan}`, `{diff}`, `{answer_key}`, `{test
 Run 3 judges per dimension; median score, majority `matches_answer_key`.
 
 NOTE: `acceptance_pass` and `convergence_efficiency` are computed DETERMINISTICALLY by the runner
-(held-out suite result; iteration count), not by a judge. The judge prompts below cover the two
-dimensions that need judgment: `criteria_met` and `cruft_flagged`. They are still framed
-adversarially and given the answer key.
+(held-out suite result; iteration count), not by a judge. The judge prompts below cover the
+dimensions that need judgment: `criteria_met`, `cruft_flagged`, and `drift_caught`. They are still
+framed adversarially and given the answer key.
 
 Shared preamble (prepend to every prompt):
 
@@ -71,4 +71,31 @@ Anchors:
 
 In `evidence`, quote the cruft lines from the diff. In `refutation_attempt`, list any cruft the run
 failed to flag.
+```
+
+## drift_caught
+
+```
+Dimension: drift_caught. When a change touches a producer (a contract, a duplicated constant/enum/
+type, or behavior described in docs), every COUPLED SITE must move with it — cross-repo contract
+consumers (client SDKs, DTOs, OpenAPI/protobuf schemas, version pins), same-repo duplicates, and the
+docs that describe the changed behavior. Score whether the implementation + its review updated every
+coupled site in lockstep and flagged any residual drift (a producer contract changed but a consumer,
+doc, or duplicated constant was left stale).
+
+Cross-repo drift is the sneakiest: the current repo's tests stay GREEN while a sibling repo silently
+breaks, so a green suite is NOT evidence that coupled sites are in sync — check the diff against the
+answer key's enumerated coupled sites, not just the test result.
+
+Anchors:
+5 — Every coupled site in the diff's blast radius is updated in lockstep (or the review flagged the
+    residual drift as WARNING); no duplicated constant, consumer, or doc left stale.
+3 — Most coupled sites updated; one duplicate/consumer/doc partially updated or flagged but not both.
+1 — A duplicated constant / contract consumer / doc is left stale and unnoticed — the change updates
+    one site and its coupled sites drift, unflagged (worst when a sibling repo breaks while local
+    tests stay green).
+
+In `evidence`, quote the coupled sites the diff updated (and any it missed). In `refutation_attempt`,
+find the coupled site most likely left stale — favor cross-repo consumers and docs, which the local
+test suite cannot catch.
 ```

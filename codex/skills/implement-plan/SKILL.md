@@ -46,6 +46,7 @@ For each phase in the plan:
    - Create new files as specified
    - Modify existing files as described
    - Follow the project's existing code style and patterns
+   - **Update every coupled site** listed in the plan's "Ripple Effects / Coupled Sites" section in lockstep with its source — cross-repo contracts, docs, and same-repo duplication all change together. Call out any coupled site that falls outside this plan's scope (another repo or work item) so it isn't silently dropped.
 3. **Write tests** as specified in the plan
 4. **Run tests** after each phase to catch issues early
    - Look for: `justfile` with test recipe, `package.json` test script, `go test ./...`, `pytest`, `cargo test`
@@ -55,6 +56,7 @@ For each phase in the plan:
    - Is error handling adequate?
    - Are there security concerns?
    - Is the code clean and well-documented?
+   - **Any missed coupled sites?** Explicitly hunt for occurrences the plan didn't list. A missed contract-breaking site (API/DTO/schema/mirrored constant) is CRITICAL; a missed doc or code comment is a minor/WARNING.
 
 ### Phase 3: Fix Issues
 
@@ -77,6 +79,7 @@ After all phases are complete:
    - Security vulnerabilities
    - Performance concerns
    - Documentation gaps
+   - **Coupled-site drift** — flag any change whose coupled sites weren't updated in lockstep. Cross-repo drift is the sneakiest: the stale site is in a DIFFERENT repo, so THIS repo's tests pass green while the sibling silently breaks — so check cross-repo contract consumers explicitly even when local tests pass. Contract-breaking drift (API/DTO/schema/mirrored constant) is CRITICAL; doc or comment drift is a WARNING.
 4. Make any final adjustments
 
 ### Phase 5: Report
@@ -95,6 +98,7 @@ Provide a summary:
 
 - All tests must pass before reporting success
 - No unused imports or dead code
+- No coupled site left stale — docs and cross-repo contracts consistent with the change
 - Error handling for all external operations
 - Comments explaining non-obvious logic
 - Consistent code style with the rest of the project

@@ -25,7 +25,7 @@ and self-tested. The one environment-specific piece â€” driving the live skill â
 ```bash
 cd ~/.claude/evals/plan-skills
 
-python3 -m runner.selftest                          # verify the harness itself (70 checks)
+python3 -m runner.selftest                          # verify the harness itself (80 checks)
 python3 -m runner.run --list                        # list discovered scenarios
 python3 -m runner.run --scenario C8 --driver mock   # mock end-to-end (no live skill)
 python3 -m runner.run --scenario C8 --driver mock --judge mock   # + L3 judge dispatch
@@ -45,9 +45,11 @@ relevant dimensions for the scenario's mode), runs `--n-judges` judges each (def
 the **median** score (normalized 0..1) and **majority** `matches_answer_key` into `TrialRecord.l3`.
 
 - Deterministic L3 (`acceptance_pass`) is always computed in `checks.py`; judges add the rest
-  (`distinctness`, `evidence_grounding`, `correct_primary`, `checkpoint_leverage`, `actionability`
-  for create-plan; `criteria_met`, `cruft_flagged` for implement-plan). `dimensions_for()` filters
-  by mode and by which answer-key fields are present (e.g. INVESTIGATION drops `correct_primary`).
+  (`distinctness`, `evidence_grounding`, `correct_primary`, `checkpoint_leverage`, `actionability`,
+  `coupled_site_coverage` for create-plan; `criteria_met`, `cruft_flagged`, `drift_caught` for
+  implement-plan). `dimensions_for()` filters by mode and by which answer-key fields are present
+  (e.g. INVESTIGATION drops `correct_primary` and `coupled_site_coverage`; `drift_caught` fires only
+  when the answer key lists `coupled_sites`, mirroring `cruft_flagged`/`cruft_to_find`).
 - `MockJudgeClient` is deterministic (selftest). `AnthropicJudgeClient` (`--judge anthropic
   --judge-model claude-sonnet-4-6`) calls the Messages API with the `../judges/schema.json` forced
   via tool use; it imports `anthropic` lazily and needs `ANTHROPIC_API_KEY`. Per SPEC, use a
@@ -148,7 +150,7 @@ Phase-0 STOP gate actually fires.
 
 ## Self-test
 
-`python3 -m runner.selftest` (70 checks) exercises scenario loading, git-state gates, anti-tamper,
+`python3 -m runner.selftest` (80 checks) exercises scenario loading, git-state gates, anti-tamper,
 held-out acceptance (correct vs broken solution), the full pipeline via `MockDriver` (pass + cheat
 paths for I1/I5/C8, proving the honesty/anti-tamper gates fire), the scoring/aggregation/A-B math,
 the L3 judge layer (template parsing, prompt rendering, median/majority aggregation, dimension
