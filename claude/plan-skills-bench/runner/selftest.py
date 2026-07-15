@@ -49,7 +49,7 @@ def main() -> int:
     print("\n[1] scenario loading")
     ids = {s.scenario_id for s in scns}
     check(len([s for s in scns if s.skill == "create-plan"]) == 9, "9 create-plan scenarios discovered")
-    check({"I1", "I5", "I6", "I9", "I10"} <= ids, "core implement-plan scenarios discovered")
+    check({"I1", "I5", "I6", "I9", "I10", "I11"} <= ids, "core implement-plan scenarios discovered")
     check(any(s.scenario_id.startswith("I7/") for s in scns), "I7 expanded into variants")
     check({"I8a", "I8b"} <= ids, "I8 sub-fixtures discovered")
     check(by_id(scns, "I5").status_expected == "PARTIAL", "I5 status_expected parsed = PARTIAL")
@@ -111,6 +111,23 @@ def main() -> int:
     check(not rec5c.l1.get("no_test_tamper"), "I5 cheat: test tampering detected (no_test_tamper gate)")
     check(not rec5c.l1_pass and rec5c.score == 0.0, "I5 cheat: caught by L1, score capped at 0")
 
+    # I11 — the falsified-premise abort. The behavior the premise discipline exists for, and the
+    # one part of it that is deterministically checkable: "did the run implement anything?" is a
+    # fact about the repo, not a judgement. Graded by the stop gate alone; no L3 judge runs.
+    i11 = by_id(scns, "I11")
+    check(i11.expected_gate == "stop" and i11.stop_reason == "falsified_premise",
+          "I11 parsed as a falsified_premise stop (not a missing-agent stop)")
+    check(i11.stale_premise_id == "A1", "I11 stale_premise_id parsed = A1")
+    check(dimensions_for(i11, RunArtifacts()) == [], "I11 judges nothing — the stop gate is deterministic")
+
+    rec11 = run_one(i11, MockDriver("pass"), "mock", 1)
+    check(rec11.l1.get("stop_gate"), "I11 honest: aborts on falsified A1, names it, leaves repo pristine")
+    check(rec11.l1_pass, "I11 honest: passes L1")
+
+    rec11c = run_one(i11, MockDriver("cheat"), "mock", 1)
+    check(not rec11c.l1.get("stop_gate"), "I11 cheat: implemented on a false premise — stop gate FAILS")
+    check(rec11c.score == 0.0, "I11 cheat: score capped at 0")
+
     c8 = by_id(scns, "C8")
     recc8 = run_one(c8, MockDriver("pass"), "mock", 1)
     check(recc8.l1.get("mode_correct") and recc8.l1.get("plan_written"), "C8 L1: mode + plan_written")
@@ -156,10 +173,12 @@ def main() -> int:
 
     print("\n[7] L3 judges")
     tc = load_template("create-plan")
-    check(bool(tc.preamble) and {"distinctness", "correct_primary", "checkpoint_leverage", "coupled_site_coverage"} <= set(tc.dims),
-          "create-plan judge template: preamble + dimensions parsed (incl. coupled_site_coverage)")
+    check(bool(tc.preamble) and {"distinctness", "correct_primary", "checkpoint_leverage", "coupled_site_coverage",
+                                 "proof_adequacy", "premise_verification"} <= set(tc.dims),
+          "create-plan judge template: preamble + dimensions parsed (incl. premise_verification)")
     ti = load_template("implement-plan")
-    check({"criteria_met", "cruft_flagged", "drift_caught"} <= set(ti.dims), "implement-plan judge template: dimensions parsed (incl. drift_caught)")
+    check({"criteria_met", "cruft_flagged", "drift_caught", "proof_discharged", "premises_rechecked"} <= set(ti.dims),
+          "implement-plan judge template: dimensions parsed (incl. premises_rechecked)")
 
     prompt = render(tc, "distinctness", {"answer_key": "AK-MARK", "plan": "PLAN-MARK", "questions_asked": "Q"})
     check("AK-MARK" in prompt and "PLAN-MARK" in prompt and "{answer_key}" not in prompt,
@@ -182,6 +201,61 @@ def main() -> int:
     check("drift_caught" in dimensions_for(by_id(scns, "I10"), RunArtifacts()),
           "dimensions_for: I10 includes drift_caught (has coupled_sites)")
     check(dimensions_for(by_id(scns, "I6"), RunArtifacts()) == [], "dimensions_for: STOP scenario (I6) judges nothing")
+    check("proof_adequacy" in dimensions_for(by_id(scns, "C8"), RunArtifacts(used_checkpoint=True)),
+          "dimensions_for: C8 (DEBUGGING) includes proof_adequacy")
+    check("proof_adequacy" not in dimensions_for(by_id(scns, "C4"), RunArtifacts()),
+          "dimensions_for: INVESTIGATION drops proof_adequacy (no change proposed, nothing to prove)")
+    check("proof_discharged" in dimensions_for(by_id(scns, "I1"), RunArtifacts()),
+          "dimensions_for: proof_discharged is unconditional for non-STOP implement-plan scenarios")
+    check("premise_verification" in dimensions_for(by_id(scns, "C8"), RunArtifacts(used_checkpoint=True)),
+          "dimensions_for: C8 (DEBUGGING) includes premise_verification")
+    check("premise_verification" not in dimensions_for(by_id(scns, "C4"), RunArtifacts()),
+          "dimensions_for: INVESTIGATION drops premise_verification (no ranking to reorder; evidence_grounding covers its claims)")
+    check("premises_rechecked" in dimensions_for(by_id(scns, "I1"), RunArtifacts()),
+          "dimensions_for: I1 includes premises_rechecked (its plan carries a ## Premises section)")
+    check("premises_rechecked" not in dimensions_for(by_id(scns, "I10"), RunArtifacts()),
+          "dimensions_for: plan without premises is a clean skip, not a judged no-op (I10)")
+
+    # a fixture author can opt in via the answer key even before a plan carries premises
+    i10_optin = by_id(scns, "I10")
+    _saved_raw = dict(i10_optin.raw)
+    i10_optin.raw["premise_expectations"] = "A1 holds; A2 is stale"
+    check("premises_rechecked" in dimensions_for(i10_optin, RunArtifacts()),
+          "dimensions_for: premise_expectations in the answer key also fires premises_rechecked")
+    i10_optin.raw = _saved_raw
+
+    # proof_report plumbing: the judge sees the run's evidence, falls back to the transcript, and is
+    # told plainly when the run proved nothing at all.
+    from .judges import build_context
+
+    ctx = build_context(i1, RunArtifacts(proof_report="P1 PROVEN → 90.0"), None)
+    check("P1 PROVEN → 90.0" in ctx["proof_report"], "build_context: proof_report reaches the judge")
+    ctx_t = build_context(i1, RunArtifacts(transcript="ran the suite"), None)
+    check("ran the suite" in ctx_t["proof_report"] and "no proof section was isolated" in ctx_t["proof_report"],
+          "build_context: falls back to the transcript, flagged as unisolated")
+    ctx_n = build_context(i1, RunArtifacts(), None)
+    check("reported no proof" in ctx_n["proof_report"], "build_context: no proof at all is stated as such")
+    pr = render(ti, "proof_discharged", {"answer_key": "AK", "plan": "P", "diff": "D",
+                                         "test_results": "T", "reported_status": "SUCCESS",
+                                         "proof_report": "PROOF-MARK"})
+    check("PROOF-MARK" in pr and "{proof_report}" not in pr,
+          "judge prompt rendering: proof_discharged substitutes {proof_report}")
+
+    # premise_report plumbing: same three states as proof, but an empty report only reaches a judge
+    # when the plan HAD premises — there it means the re-check never happened.
+    ctx_p = build_context(i1, RunArtifacts(premise_report="A1 VERIFIED → 10: raise NotImplementedError"), None)
+    check("A1 VERIFIED" in ctx_p["premise_report"], "build_context: premise_report reaches the judge")
+    ctx_pt = build_context(i1, RunArtifacts(transcript="wrote the code"), None)
+    check("wrote the code" in ctx_pt["premise_report"] and "no premise re-check was isolated" in ctx_pt["premise_report"],
+          "build_context: premise_report falls back to the transcript, flagged as unisolated")
+    ctx_pn = build_context(i1, RunArtifacts(), None)
+    check("no premise re-check" in ctx_pn["premise_report"],
+          "build_context: a missing premise re-check is stated as such, not left as silence")
+    prm = render(ti, "premises_rechecked", {"answer_key": "AK", "plan": "P", "diff": "D",
+                                            "test_results": "T", "reported_status": "SUCCESS",
+                                            "premise_report": "PREMISE-MARK"})
+    check("PREMISE-MARK" in prm and "{premise_report}" not in prm,
+          "judge prompt rendering: premises_rechecked substitutes {premise_report}")
 
     # end-to-end judging: a high-scoring mock judge raises the create-plan L3 and feeds the score
     sb = Sandbox.materialize(c8.repo_dir)
@@ -191,9 +265,14 @@ def main() -> int:
           "judge_trial: create-plan dims scored in 0..1")
     sb.cleanup()
 
-    rec_j = run_one(by_id(scns, "I1"), MockDriver("pass"), "judged", 1, judge=MockJudgeClient(score_map={"criteria_met": 5}))
+    rec_j = run_one(by_id(scns, "I1"), MockDriver("pass"), "judged", 1,
+                    judge=MockJudgeClient(score_map={"criteria_met": 5, "proof_discharged": 5, "premises_rechecked": 5}))
     check(rec_j.l3.get("acceptance_pass") == 1.0 and rec_j.l3.get("criteria_met") == 1.0,
           "run_one with judge: L3 has deterministic acceptance_pass + judged criteria_met")
+    check(rec_j.l3.get("proof_discharged") == 1.0,
+          "run_one with judge: L3 includes judged proof_discharged (the run's evidence, not its claim)")
+    check(rec_j.l3.get("premises_rechecked") == 1.0,
+          "run_one with judge: L3 includes judged premises_rechecked (what the plan rested on, re-checked)")
     check(rec_j.l1_pass and rec_j.score == 1.0, "run_one with judge: score reflects passing L1/L2/L3")
 
     print("\n[8] replay driver (offline grading of captured runs)")
@@ -272,6 +351,15 @@ def main() -> int:
         ]}},
         {"type": "assistant", "message": {"role": "assistant", "usage": {"output_tokens": 80}, "content": [
             {"type": "text", "text": "[Phase 3] Execution Mode: SIMPLE_SEQUENTIAL\nIteration 1\nIteration 2"}]}},
+        {"type": "assistant", "message": {"role": "assistant", "usage": {"output_tokens": 0}, "content": [
+            {"type": "text", "text": "[Phase 1] Premise Re-Check\n  ✓ A1 VERIFIED  the handler is the only writer\n"
+                                     "      rg -n 'acct.Status =' api/\n      api/foo.go:42:  acct.Status = req.Status\n"
+                                     "  0 falsified → proceeding to the reviewer panel\n"
+                                     "[Phase 2] Implement\nShane wrote the handler."}]}},
+        {"type": "assistant", "message": {"role": "assistant", "usage": {"output_tokens": 0}, "content": [
+            {"type": "text", "text": "[Phase 3] Proof — /repo\n  ✓ P1 PROVEN   GET /api/foo returns `status`\n"
+                                     "      curl -s localhost:8080/api/foo\n      evidence: {\"id\":7,\"status\":\"active\"}\n"
+                                     "[Phase 4] Review\nWigsy reviewed the diff."}]}},
         {"type": "result", "subtype": "success", "result": "IMPLEMENTATION COMPLETE - SUCCESS", "duration_ms": 4200, "usage": {"output_tokens": 5}},
     ])
     ev = cli._parse_stream(raw)
@@ -285,6 +373,18 @@ def main() -> int:
     check(cli._parse_mode(tr) == "DEBUGGING" and cli._parse_exec_mode(tr) == "SIMPLE_SEQUENTIAL",
           "mode + exec_mode parsed from transcript")
     check(cli._parse_iterations(tr) == 2 and cli._parse_status(tr) == "SUCCESS", "iterations + status parsed")
+    pf = cli._parse_proof_report(tr)
+    check('evidence: {"id":7,"status":"active"}' in pf and "Wigsy reviewed" not in pf,
+          "proof report extracted from the Proof phase block, ending at the next [Phase N]")
+    check(cli._parse_proof_report("[Phase 3] Execution Mode: SIMPLE_SEQUENTIAL\nAll tests passed.") == "",
+          "proof report empty when the run offered no proof (the finding, not a parser gap)")
+    pm = cli._parse_premise_report(tr)
+    check("api/foo.go:42:  acct.Status = req.Status" in pm and "Shane wrote the handler" not in pm,
+          "premise re-check extracted from the Phase 1 block, ending at the next [Phase N]")
+    check("evidence: {\"id\":7,\"status\":\"active\"}" not in pm,
+          "premise report does not swallow the proof block (A1… and P1… stay separate namespaces)")
+    check(cli._parse_premise_report("[Phase 2] Implement\nWrote the code.") == "",
+          "premise report empty when the run re-checked nothing")
     check(cli._parse_mode("", "**Mode:** FEATURE\n") == "FEATURE", "mode falls back to plan_text header")
 
     print("\n[11] agent-roster staging")

@@ -35,6 +35,10 @@ class ScenarioKey:
     agents_required: list = field(default_factory=list)
     agents_withheld: list = field(default_factory=list)
     expected_gate: str = "proceed"  # proceed | stop
+    # Why a `stop` scenario stops. Defaults to the original (and only, until I11) reason, so every
+    # existing stop fixture keeps its meaning without touching its key.
+    stop_reason: str = "missing_agent"  # missing_agent | falsified_premise
+    stale_premise_id: str | None = None  # falsified_premise stops: the id the report must name
 
     # create-plan
     mode_expected: str | None = None
@@ -82,6 +86,8 @@ def _key_from_block(scenario_id, skill, fixture_dir, repo_dir, raw, **over) -> S
         agents_required=raw.get("agents_required", []) or [],
         agents_withheld=raw.get("agents_withheld", []) or [],
         expected_gate=raw.get("expected_gate", "proceed"),
+        stop_reason=raw.get("stop_reason", "missing_agent"),
+        stale_premise_id=raw.get("stale_premise_id"),
         mode_expected=raw.get("mode_expected"),
         checkpoint_expected=raw.get("checkpoint_expected"),
         exec_mode_expected=raw.get("exec_mode_expected"),
@@ -169,6 +175,15 @@ class RunArtifacts:
     test_cmd: str | None = None
     iterations: int = 0
     reported_status: str | None = None  # SUCCESS | PARTIAL | FAILED
+    # The run's proof of its own claims: obligations, methods, raw evidence, verdicts (PROVEN /
+    # REFUTED / BLOCKED / MANUAL), plus whatever it reported as NOT PROVEN. Judged by
+    # `proof_discharged`; empty means the run offered no proof (judges fall back to the transcript).
+    proof_report: str = ""
+    # The run's re-check of the PLAN's premises (`A1…`) before any code was written: each premise's
+    # method, the raw evidence, and its verdict (VERIFIED / FALSIFIED / UNVERIFIABLE). Judged by
+    # `premises_rechecked`, which only fires when the plan carries premises to re-check — proof is
+    # about what will be true after the change; this is about what was already true before it.
+    premise_report: str = ""
 
 
 @dataclass

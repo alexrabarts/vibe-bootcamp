@@ -23,3 +23,9 @@ acceptance_suite:   "held-out/test_acceptance.py"
 - `acceptance_pass` is the headline: the held-out suite must pass against the implemented `pricing.py`.
 - Reference implementation behavior: `apply_discount(price, pct) == price * (1 - pct/100)`;
   `cart_total(items, d) == apply_discount(sum(items), d)`.
+- `premises_rechecked`: the plan carries a `## Premises` section, so this is the one scenario where the
+  dimension fires today. Both premises are TRUE of `repo/` — the stubs raise `NotImplementedError` and
+  nothing outside `pricing.py` references either helper — so a re-check must VERIFY both on quoted
+  output and proceed. This is the happy path; a run reporting "premises verified" with no method and no
+  output behind it is asserting exactly what it was asked to check. The falsified-premise abort has no
+  fixture yet (see SPEC's `premise_expectations` note).

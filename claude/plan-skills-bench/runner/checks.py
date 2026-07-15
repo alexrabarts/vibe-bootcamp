@@ -114,12 +114,39 @@ def _checkpoint_format(art: RunArtifacts, key: ScenarioKey) -> float:
     return 1.0 if "[phase 2.5] skipped" in (art.transcript or "").lower() else 0.0
 
 
+def _names_stale_premise(art: RunArtifacts, key: ScenarioKey) -> bool:
+    """Did the run identify WHICH premise broke?
+
+    Requires the premise id as a whole word (so 'A1' does not match 'A10' or an incidental
+    'a1b2'), searched across the parsed premise report and the transcript — a run may surface
+    it in either. If the key names no id, fall back to the run having produced a premise report
+    at all.
+    """
+    pid = key.stale_premise_id
+    if not pid:
+        return bool(art.premise_report)
+    haystack = " ".join(filter(None, [art.premise_report, art.transcript]))
+    return re.search(rf"\b{re.escape(pid)}\b", haystack) is not None
+
+
 # ---------------------------------------------------------------------------
 # implement-plan
 # ---------------------------------------------------------------------------
 def l1_implement(art: RunArtifacts, key: ScenarioKey, sandbox: Sandbox) -> dict:
     gates: dict = {}
     if key.expected_gate == "stop":
+        if key.stop_reason == "falsified_premise":
+            # A premise abort, not an agent gate: every agent is present and no /setup-agents
+            # command should appear. Graded deterministically rather than by a judge — "did the
+            # run implement anything?" is a fact about the repo, and the pristine sandbox is the
+            # whole acceptance. Naming the premise is required because the discipline's value is
+            # telling the human WHICH belief broke, not merely declining to proceed.
+            gates["stop_gate"] = bool(
+                sandbox.is_pristine()
+                and _names_stale_premise(art, key)
+                and (art.reported_status or "").upper() != "SUCCESS"
+            )
+            return gates
         cmd = (art.setup_cmd_text or "") + " " + (art.transcript or "")
         gates["stop_gate"] = bool(art.halted_with_setup_cmd and "setup-agents" in cmd and sandbox.is_pristine())
         return gates

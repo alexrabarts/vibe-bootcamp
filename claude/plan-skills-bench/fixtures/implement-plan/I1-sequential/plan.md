@@ -38,6 +38,39 @@ Unit tests covering both functions, including empty cart and zero-discount cases
 - [ ] `cart_total([10, 20, 30], 10) == 54.0`; `cart_total([], 10) == 0.0`.
 - [ ] No dead code or unused imports remain.
 
+## Premises
+
+What this plan rests on, verified at plan time. `/implement-plan` re-checks these before writing any
+code — a plan run later can rest on a premise that has since gone stale.
+
+### A1 — `pricing.py` defines `apply_discount` and `cart_total` as unimplemented stubs
+
+**Why load-bearing:** Phases 1 and 2 fill in existing stubs. If either were already implemented, this
+is a review-or-dedupe task and the plan changes.
+**Method:** `grep -n 'def apply_discount\|def cart_total\|NotImplementedError' pricing.py`
+**Expected:** both defs present, each body raising `NotImplementedError`.
+**Evidence:**
+```
+4:def apply_discount(price, pct):
+10:    raise NotImplementedError
+13:def cart_total(items, discount_pct):
+19:    raise NotImplementedError
+```
+**Verdict:** VERIFIED
+
+### A2 — nothing outside `pricing.py` calls either helper today
+
+**Why load-bearing:** the plan treats these as new internal surface (no Paige, no coupled sites). An
+existing caller bound to the stubs' behavior would add work Phase 2 does not account for.
+**Method:** `grep -rn 'apply_discount\|cart_total' --include='*.py' . | grep -v '^./pricing.py'`
+**Expected:** no matches.
+**Evidence:**
+```
+(no output)
+```
+**Verdict:** VERIFIED
+
 ## Assumptions
 
-- Prices are non-negative numbers; `pct` is 0–100.
+- Prices are non-negative numbers; `pct` is 0–100. — unverified; risk if wrong: rounding behavior at
+  the boundaries is unspecified.

@@ -22,9 +22,14 @@ _JUDGE_DIR = Path(__file__).resolve().parent.parent / "judges"
 # Which L3 dimensions apply, by create-plan mode. acceptance_pass / convergence_efficiency are
 # deterministic (computed in checks.py), so they are NOT judged here.
 _CREATE_DIMS = {
-    "DEBUGGING": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage"],
-    "FEATURE": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage"],
-    "REFACTOR": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage"],
+    "DEBUGGING": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "proof_adequacy", "premise_verification"],
+    "FEATURE": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "proof_adequacy", "premise_verification"],
+    "REFACTOR": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "proof_adequacy", "premise_verification"],
+    # INVESTIGATION plans propose no change, so they carry no success criteria to prove — and they
+    # select no hypothesis and design no fix, so there is no ranking for a discriminating premise to
+    # reorder and nothing that collapses if a belief is false. What an investigation asserts about the
+    # current system is already graded by `evidence_grounding` against `ground_truth_flow`; judging
+    # `premise_verification` here would score the same claims twice under a second name.
     "INVESTIGATION": ["evidence_grounding", "actionability"],
 }
 
@@ -159,6 +164,17 @@ def judge_dimension(client: JudgeClient, dimension: str, prompt: str, n_judges: 
     return aggregate_judgments([client.judge(dimension, prompt) for _ in range(n_judges)])
 
 
+_PREMISES_SECTION_RE = re.compile(r"^##\s+Premises\s*$", re.MULTILINE)
+
+
+def _plan_has_premises(scenario: ScenarioKey) -> bool:
+    """Does the plan handed to this run carry a `## Premises` section to re-check? This is the skill's
+    own trigger condition, so it is the honest gate for `premises_rechecked`."""
+    if not scenario.plan_path or not scenario.plan_path.exists():
+        return False
+    return bool(_PREMISES_SECTION_RE.search(scenario.plan_path.read_text()))
+
+
 def dimensions_for(scenario: ScenarioKey, artifacts: RunArtifacts) -> list[str]:
     """Which L3 dimensions to judge for this scenario (deterministic ones excluded)."""
     if scenario.expected_gate == "stop":
@@ -171,8 +187,16 @@ def dimensions_for(scenario: ScenarioKey, artifacts: RunArtifacts) -> list[str]:
         if "checkpoint_leverage" in dims and not (artifacts.used_checkpoint or scenario.checkpoint_expected == "fires"):
             dims = [d for d in dims if d != "checkpoint_leverage"]
         return dims
-    # implement-plan
-    dims = ["criteria_met"]
+    # implement-plan. proof_discharged is unconditional: every run claims its criteria are met, so
+    # every run owes proof. A run that reports none scores it 1 — that is the measurement, not a gap.
+    dims = ["criteria_met", "proof_discharged"]
+    # premises_rechecked is NOT unconditional, and the asymmetry with proof is deliberate. Proof is
+    # owed by every run because every run makes claims. A premise re-check is owed only where the plan
+    # carries premises: with no `## Premises` section the correct behavior is a clean skip — inventing
+    # premises from a finished plan would ratify it rather than test it — so judging every scenario
+    # would score a correct no-op as if it were a discipline, or punish it as if it were a lapse.
+    if _plan_has_premises(scenario) or scenario.raw.get("premise_expectations"):
+        dims.append("premises_rechecked")
     if scenario.raw.get("cruft_to_find"):
         dims.append("cruft_flagged")
     if scenario.raw.get("coupled_sites"):
@@ -196,7 +220,41 @@ def build_context(scenario: ScenarioKey, artifacts: RunArtifacts, sandbox, test_
         "diff": diff,
         "test_results": test_results or "(not provided)",
         "reported_status": artifacts.reported_status or "(none)",
+        "proof_report": _proof_report(artifacts),
+        "premise_report": _premise_report(artifacts),
     }
+
+
+def _proof_report(artifacts: RunArtifacts) -> str:
+    """What the run offered as proof. Falls back to the transcript when the driver did not isolate a
+    proof section (older bundles, best-effort parsers) so the judge grades what was actually said —
+    and to an explicit "none" when the run offered nothing, which is itself the finding."""
+    if artifacts.proof_report:
+        return artifacts.proof_report
+    if artifacts.transcript:
+        return (
+            "(no proof section was isolated from this run; the full transcript follows — if it "
+            "contains no obligations, methods, or raw evidence, the run reported no proof)\n"
+            f"{artifacts.transcript}"
+        )
+    return "(the run reported no proof: no obligations, no methods, no evidence)"
+
+
+def _premise_report(artifacts: RunArtifacts) -> str:
+    """What the run offered as its re-check of the plan's premises. The dimension only fires when the
+    plan HAS premises, so inside that gate an empty report is not ambiguous: the run implemented
+    without re-checking what the plan rests on. Say that plainly rather than handing the judge a
+    silence it might read as a clean skip."""
+    if artifacts.premise_report:
+        return artifacts.premise_report
+    if artifacts.transcript:
+        return (
+            "(no premise re-check was isolated from this run; the full transcript follows — if it "
+            "contains no premise methods, evidence, or verdicts, the run implemented without "
+            "re-checking the premises the plan rests on)\n"
+            f"{artifacts.transcript}"
+        )
+    return "(the run reported no premise re-check: no methods, no evidence, no verdicts)"
 
 
 def judge_trial(

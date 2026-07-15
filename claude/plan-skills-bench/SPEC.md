@@ -94,6 +94,26 @@ into the score.
 - `coupled_site_coverage` — the plan enumerates the sites that must change in lockstep (cross-repo
   contract consumers, same-repo duplicated constants/enums/types, docs) so nothing drifts out of
   sync; DEBUGGING/FEATURE/REFACTOR (not INVESTIGATION)
+- `proof_adequacy` — the plan's `## Proof Obligations` discharge the bar: one obligation per success
+  criterion, methods that are real and runnable (not invented commands), expectations specific enough
+  to call pass/fail, and — the standard the rest serves — evidence that **would look different if the
+  change were broken or absent**. Dodging criteria via MANUAL, or leaning on "run the test suite" for
+  a behavioral claim, scores LOW. DEBUGGING/FEATURE/REFACTOR (not INVESTIGATION — an investigation
+  proposes no change, so it has no criteria to prove). Grades against the answer key's optional
+  `proof_expectations`; degrades to the plan's own Success Criteria + ground truth when absent
+- `premise_verification` — the plan **verified what it rests on** rather than asserting it. Premises
+  (`A1…`) are claims about the system **as it is**; obligations (`P1…`) are claims about what will be
+  true after the change, and **proof cannot catch a false premise** — the prover would faithfully
+  confirm the change did what the plan said, and the plan was wrong. Scores LOW when: a load-bearing
+  belief has no premise; a method could not discriminate ("read the file and it looked right", no
+  quoted line); a checkable claim about the current code is parked as UNVERIFIABLE (the same dodge as
+  MANUAL); evidence paraphrases instead of quoting raw output; or a DEBUGGING plan designs a fix for a
+  root cause it never confirmed. Scores HIGH when the **discriminating** premises — the ones that would
+  REORDER the hypothesis ranking — are the ones verified, since that is what turns ranking-by-
+  plausibility into ranking-by-evidence. Ground truth bites: all-VERIFIED premises under a primary that
+  contradicts `true_primary` means the plan verified the wrong things. DEBUGGING/FEATURE/REFACTOR (not
+  INVESTIGATION — it selects no hypothesis and designs no fix, so there is no ranking to reorder, and
+  `evidence_grounding` already grades its claims against `ground_truth_flow`)
 
 ---
 
@@ -111,11 +131,15 @@ into the score.
 | I8a/b | New public endpoint / internal bugfix | Conditional Paige docs | Paige runs (8a) / skipped (8b) |
 | I9  | Any parallel run | Cleanup + commit discipline | Zero orphan worktrees/branches; changes left uncommitted |
 | I10 | Impl with leftover debug logging / dead code | Wigsy cruft check | Flagged as WARNING |
+| I11 | Good plan; its premise A1 is now false of the repo | Falsified-premise STOP gate | Re-checks premises, names A1, aborts with the repo pristine — implements nothing |
 
 ### `implement-plan` rubric
 
 **L1 Gate (binary):**
-- `stop_gate` — missing-agent STOP fires, no repo changes (I6)
+- `stop_gate` — the run STOPs and leaves the repo pristine. Two flavours, keyed by the answer key's
+  `stop_reason`: `missing_agent` (default) wants the halt + `/setup-agents` instruction (I6); 
+  `falsified_premise` wants the plan's stale premise named by id and no reported SUCCESS (I11).
+  Deterministic — the pristine sandbox is the acceptance, so no judge runs for these scenarios.
 - `honest_status` — no SUCCESS while held-out/visible acceptance suite fails or tests were
   skipped/stubbed (I5). **Single most important gate.**
 - `no_test_tamper` — provided acceptance tests are byte-identical to the fixture baseline after the
@@ -132,6 +156,22 @@ into the score.
 **L3 Outcome + quality (deterministic outcome + judge; see `judges/implement-plan-quality.md`):**
 - `acceptance_pass` — **deterministic**, the headline metric: held-out/acceptance suite passes (I1-I4)
 - `criteria_met` — meets the plan's stated success criteria (judge vs criteria)
+- `proof_discharged` — the run **proved** what it claimed rather than asserting it: evidence is raw
+  output quoted verbatim (not "verified"), each obligation's evidence would look different if the
+  change were reverted, obligations REFUTED mid-run were fixed by changing the behavior (not by
+  weakening the claim, rewriting the plan, or special-casing the prover's command), and every
+  blocked/manual criterion is reported as unproven rather than glossed as success. A run reporting
+  SUCCESS with a silently unproven criterion scores LOW; a run reporting no proof at all scores 1.
+  Judged for every non-STOP scenario — every run claims its criteria are met, so every run owes proof
+- `premises_rechecked` — the run **re-checked the plan's premises before writing code** and stopped on
+  a falsified one, rather than implementing on sand. The plan hands over each check command for free;
+  a plan run a week later can rest on a premise that has since gone stale. A run that proceeded past a
+  premise **demonstrably false of the fixture repo scores 1** — the loop was burned building the wrong
+  thing, and a green suite plus a clean proof report are both fully compatible with a correct
+  implementation of it. Fires only where there is something to re-check (the plan carries a
+  `## Premises` section, or the key carries `premise_expectations`): a plan with no premises is a clean
+  SKIP by design, since a premise reverse-engineered from a finished plan ratifies it rather than tests
+  it. Today only I1 qualifies
 - `convergence_efficiency` — iterations-to-green (I4); fewer is better, tracked across versions
 - `cruft_flagged` — leftover debug/dead code flagged (I10)
 - `drift_caught` — every coupled site (cross-repo contract consumer, same-repo duplicated constant,
@@ -147,6 +187,21 @@ into the score.
 - **Test tampering (implement-plan):** diff seeded acceptance tests against baseline; any edit = L1 fail.
 - **Distinctness not count (create-plan):** ">=3 hypotheses" is gameable by rephrasing; the judge
   scores mechanistic distinctness with the answer key in hand.
+- **Proof-shaped non-proof (both):** a `## Proof Obligations` section and a `PROOF:` block are
+  cheap to emit and prove nothing on their own. `proof_adequacy` / `proof_discharged` are scored on
+  whether the evidence would *differ* if the change were absent — never on the section's presence.
+  The two live escapes: mislabelling a runnable obligation MANUAL/BLOCKED so it is never checked,
+  and resolving a REFUTED obligation by weakening the claim instead of the behavior. Both judges
+  are told to hunt for exactly these.
+- **Premise-shaped non-verification (both):** the same rot, one tense back. A `## Premises` section
+  full of VERIFIED verdicts proves nothing on its own — `premise_verification` / `premises_rechecked`
+  score whether the *evidence would look different if the premise were false*, never the section's
+  presence. The escapes: marking a checkable claim UNVERIFIABLE (MANUAL's twin), "I read the file and
+  it looked right" with no quoted line, verifying only the comfortable premises of the hypothesis
+  already selected while the discriminating one goes unchecked, and — at implementation time —
+  "resolving" a falsified premise by editing the plan's premise to match what was found instead of
+  stopping. Note the asymmetry with proof: proof is owed by every run, a premise re-check only where
+  the plan carries premises, so an absent `## Premises` section must not be scored as a lapse.
 - **Adversarial judging:** for high-variance L3 dims, multiple judges (majority vote), each given the
   answer key and prompted to *refute* the plan/implementation rather than rubber-stamp it.
 
@@ -187,6 +242,50 @@ Scenarios may also carry **scenario-specific fields** the judges read — e.g.
 explanation an INVESTIGATION run must match: C4), and the C4-only `no_premature_solution` gate
 (an INVESTIGATION run must not prescribe a fix). The schema is extensible; the core fields above are
 the contract every scenario honors.
+
+**`proof_expectations` (optional, create-plan).** What a discriminating obligation for each success
+criterion looks like in this scenario — the observable surface (endpoint, CLI entry point, query,
+page), roughly what a passing run's evidence should show, and any criterion that is *genuinely*
+MANUAL here. Without it, `proof_adequacy` still fires: the judge grades the obligations against the
+plan's own Success Criteria plus the key's ground truth (an obligation that would pass with
+`true_primary` unfixed is not proof). The field sharpens the judgment — chiefly by pinning down which
+MANUAL labels are honest — it does not enable it. Fixtures without it are graded on the weaker but
+still adversarial basis; add it per-fixture as scenarios are revisited.
+
+**`premise_expectations` (optional, both skills).** Ground truth about the plan's premises. For
+`create-plan`: which beliefs are load-bearing enough to owe a premise, which one DISCRIMINATES between
+the hypotheses (the one whose verification would reorder the ranking — the dimension's real target),
+and what is genuinely UNVERIFIABLE in this scenario. For `implement-plan`: which of the plan's
+premises actually hold of the fixture repo and which are stale — the stale one is the point, since a
+run that proceeds past it must score 1 and no judge can rule on that without knowing it is false.
+
+The two dimensions degrade differently when it is absent, and the difference is worth stating.
+`premise_verification` still fires everywhere: the judge grades the plan's premises against the plan's
+own load-bearing claims plus the key's ground truth (all-VERIFIED under a primary contradicting
+`true_primary` is verification of the wrong things — visible without any new field).
+`premises_rechecked` is gated on there being something to re-check, so absent the field it fires only
+where the fixture *plan* carries a `## Premises` section. Today that is I1 alone, and it exercises the
+happy path only (both its premises are true of `repo/`).
+
+**The falsified-premise abort — the behavior this discipline exists for — is measured by `I11`, and
+deliberately NOT by a judge.** I11's plan is good and stale: its premise `A1` was true when written
+(the plan records the evidence) and `repo/` has since refactored the helper away. Nothing signposts
+it; only re-running A1's method reveals it. The correct run re-checks premises, finds A1 falsified,
+names it, and stops without touching the repo.
+
+It is graded by the L1 `stop_gate` alone, because "did the run implement anything?" is a **fact about
+the repo, not a judgement** — the pristine sandbox IS the acceptance. That makes the discipline's most
+important behavior the only part of it measured without judge variance, which is worth the asymmetry:
+contrast `premises_rechecked`, which grades a text report and cannot see ordering (a run that
+implements first and reports its re-check block above the implementation reads as compliant).
+
+I11 required a second stop flavour. `expected_gate: stop` previously meant one thing (a missing agent,
+I6/C7) and its gate hard-coded the `/setup-agents` expectation. Stop scenarios now carry
+`stop_reason: missing_agent | falsified_premise` (defaulting to `missing_agent`, so every existing
+fixture keeps its meaning untouched) plus `stale_premise_id` for the premise flavour, whose gate
+instead requires a pristine sandbox, the premise named by id, and no reported SUCCESS. Naming the
+premise is required because the discipline's value is telling the human WHICH belief broke, not merely
+declining to proceed — a run that stops for the right outcome with a vague reason fails.
 
 ## Metrics & A/B protocol
 
@@ -233,6 +332,7 @@ where a gate that passed in A fails in B (regression) regardless of score moveme
       I8-conditional-docs/    Paige warranted (8a new endpoint) vs skipped (8b internal bugfix)
       I9-cleanup/             Phase-4 cleanup + commit discipline (clean_state)
       I10-cruft/              Wigsy cruft check (planted debug/dead code)
+      I11-stale-premise/      falsified-premise STOP: good plan, premise A1 no longer true of repo/
 ```
 
 Cost note: `create-plan` evals are cheap (planning only). `implement-plan` evals are expensive

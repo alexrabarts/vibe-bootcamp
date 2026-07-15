@@ -46,10 +46,32 @@ the **median** score (normalized 0..1) and **majority** `matches_answer_key` int
 
 - Deterministic L3 (`acceptance_pass`) is always computed in `checks.py`; judges add the rest
   (`distinctness`, `evidence_grounding`, `correct_primary`, `checkpoint_leverage`, `actionability`,
-  `coupled_site_coverage` for create-plan; `criteria_met`, `cruft_flagged`, `drift_caught` for
-  implement-plan). `dimensions_for()` filters by mode and by which answer-key fields are present
-  (e.g. INVESTIGATION drops `correct_primary` and `coupled_site_coverage`; `drift_caught` fires only
-  when the answer key lists `coupled_sites`, mirroring `cruft_flagged`/`cruft_to_find`).
+  `coupled_site_coverage`, `proof_adequacy`, `premise_verification` for create-plan; `criteria_met`,
+  `proof_discharged`, `premises_rechecked`, `cruft_flagged`, `drift_caught` for implement-plan).
+  `dimensions_for()` filters by mode and by which answer-key fields are present (e.g. INVESTIGATION
+  drops `correct_primary`, `coupled_site_coverage`, and `proof_adequacy` — it proposes no change, so it
+  has nothing to prove — and `premise_verification`, since it selects no hypothesis and designs no fix,
+  leaving no ranking for a discriminating premise to reorder; `drift_caught` fires only when the answer
+  key lists `coupled_sites`, mirroring `cruft_flagged`/`cruft_to_find`).
+- `proof_discharged` is unconditional for non-STOP implement-plan scenarios — every run claims its
+  criteria are met, so every run owes proof. It reads `RunArtifacts.proof_report` (the obligations,
+  methods, raw evidence, and PROVEN/REFUTED/BLOCKED/MANUAL verdicts); `CliDriver` extracts it from
+  the transcript's Proof phase + `PROOF:` / `NOT PROVEN` sections. When it is empty the judge is
+  handed the transcript, and when there is no transcript either it is told the run proved nothing —
+  which is the finding, not a gap. `proof_adequacy` needs no new plumbing: the plan's
+  `## Proof Obligations` section is already inside `{plan}`.
+- `premises_rechecked` is deliberately NOT unconditional — the asymmetry with `proof_discharged` is the
+  design, not an oversight. Every run makes claims, so every run owes proof; a premise re-check is owed
+  only where the plan carries premises, because with no `## Premises` section a clean skip is CORRECT
+  (a premise reverse-engineered from a finished plan ratifies it rather than tests it). So it fires iff
+  `_plan_has_premises(scenario)` (the skill's own trigger, read from `scenario.plan_path`) or the key
+  carries `premise_expectations` — otherwise a correct no-op would be scored as a discipline, or a
+  correct skip punished as a lapse. It reads `RunArtifacts.premise_report`, which `CliDriver` extracts
+  from the transcript's `[Phase 1] Premise Re-Check` block and final `PREMISES:` section via the same
+  block grammar as proof (`_collect_blocks`); inside the gate an empty report means the re-check never
+  happened, and the judge is told so. `premise_verification` needs no new plumbing: the plan's
+  `## Premises` section is already inside `{plan}`, since there the plan is the skill's OUTPUT rather
+  than the fixture's input.
 - `MockJudgeClient` is deterministic (selftest). `AnthropicJudgeClient` (`--judge anthropic
   --judge-model claude-sonnet-4-6`) calls the Messages API with the `../judges/schema.json` forced
   via tool use; it imports `anthropic` lazily and needs `ANTHROPIC_API_KEY`. Per SPEC, use a
