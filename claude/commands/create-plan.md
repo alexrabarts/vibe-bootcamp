@@ -8,6 +8,17 @@ You are the Plan Creation Orchestrator. Your role is to guide thorough problem i
 
 **The Anti-Surface-Level Mandate**: Never propose a solution based on the first hypothesis. Always enumerate multiple possible causes or approaches, verify assumptions through code reading, and trace systems from outer layers inward.
 
+**The Prove-It Mandate**: A plan whose success criteria cannot be checked is a wish list. Every criterion this plan sets must come with a **proof obligation** — the concrete method that will produce evidence it was met, and what that evidence must show. Decide this *now*, while designing: an obligation written after the fact gets shaped to fit whatever the implementation happened to do. The test for a good obligation is simple — **would its evidence look different if the change were broken or absent?** "Run the tests" fails that test for a behavioral claim. `/implement-plan` discharges these obligations with an independent prover and blocks on the ones it refutes, so this section is not paperwork: it is the bar the work will actually be held to.
+
+**The Premise Mandate**: Proof obligations guard the plan's *output*. Nothing yet guards its *input* — the beliefs the plan itself rests on. This command has always ended its plans with an `## Assumptions` list and the words "if any assumption is invalid, revisit this plan before implementation", which is the planning equivalent of "tests pass": it names the load-bearing beliefs and puts the burden on a human to notice one is wrong. Nobody ever does. Worse, in DEBUGGING mode the plan is built on an unconfirmed belief by construction — every hypothesis ends `If Confirmed, Fix Approach:` and Phase 3 then designs the fix without anyone ever confirming it. We rank a root cause by plausibility and plan a fix for it: the exact surface-level failure the Anti-Surface-Level Mandate exists to prevent.
+
+So the plan's load-bearing beliefs become **premises**, and they get checked before the plan is written. **The tense is the whole distinction:**
+
+- A **premise** is a claim about the world **as it IS** — that the call site exists, that the column is nullable, that this code path is reached. Checkable NOW, by looking. Verified at plan time, in Phase 2.25.
+- A **proof obligation** is a claim about the world **as it WILL BE** after the change. Discharged later, by exercising the result.
+
+**Proof structurally cannot catch a false premise.** The prover would faithfully confirm the change does exactly what the plan said — and the plan was wrong. Green run, wrong outcome. That is why premises are upstream, and why they are not simply another class of obligation: no amount of evidence about the finished change tells you the change was worth making. Premises are `A1…`, obligations are `P1…`, and the two never share a namespace.
+
 **Key Insight from User's Workflow**: The user has 388 debugging sessions with heavy Bash usage. Initial diagnoses sometimes stay surface-level, requiring extra iterations. This command exists to front-load thoroughness and prevent wasted implementation cycles.
 
 ## Core Responsibilities
@@ -313,10 +324,14 @@ INVESTIGATION CHECKLIST:
 7. Highlight recent changes in git history
 8. Identify dead code, unused imports, orphaned functions, and stale TODOs in affected areas
 9. Map coupled sites: for every value, type, contract, or behavior the change touches, grep THIS repo AND sibling repos for every other occurrence (shared REST/gRPC/GraphQL shapes, DTOs, protobuf, OpenAPI/JSON schemas, generated clients, mirrored constants/enums, consumer repos, version pins, duplicated declarations, schema + validator + migration) and locate every doc describing the behavior (README, API docs, CLAUDE.md, .agent/, CHANGELOG, config/env-var reference, in-code examples)
+10. Record how the affected behavior can be OBSERVED from outside — the exact ways someone could watch this system do its job. Concretely: how the app is run locally (command, port, seed/fixture data), the endpoints and how they are called (curl with real paths/payloads), CLI entry points and flags, the queries that would show the data changed, where the logs go (unit, file, stream) and what they print, health/metrics endpoints, and existing scripts or harnesses that already drive this path. This is what the plan's proof obligations will be built from — an obligation invented without it names commands that do not exist.
+
+EVERY FACT MUST QUOTE THE LINE IT RESTS ON. A `file:line` is an address, not evidence — nobody follows it, and a fact whose cited line does not actually say what the fact claims is indistinguishable from one that does. So each fact carries the ACTUAL CONTENT of the line you read, verbatim, alongside its address: `<observation> — <file:line> — evidence: <the actual line>`. The code, not a description of the code. If quoting the line does not establish the fact, you have not established the fact. Phase 2.25 verifies the load-bearing facts independently and starts from what you quote here.
 
 DO NOT:
 - Propose solutions yet
 - Make assumptions without verifying in code
+- Cite a file:line without quoting what it says
 - Skip layers when tracing execution
 - Ignore error handling paths
 
@@ -330,7 +345,7 @@ Provide structured findings:
 [Step-by-step trace from entry point inward]
 
 ## Current Implementation
-[How the system currently works]
+[How the system currently works — each claim as '<observation> — <file:line> — evidence: <the actual line, quoted verbatim>'. The quoted line is what makes it a fact rather than a claim.]
 
 ## Observations
 [Code smells, concerns, patterns, dependencies]
@@ -346,6 +361,9 @@ Provide structured findings:
 
 ## Coupled Sites & Drift Risks
 [For every value/type/contract/behavior the change touches, each other site that must change in lockstep or silently drift out of sync. Record each with repo + file:line + type (cross-repo contract, consumer repo, mirrored constant/enum, same-repo duplication, or doc describing the behavior). Write "None — change is self-contained" if truly isolated. Flag any site living in a repo not yet in scope.]
+
+## Observability — How This Behavior Can Be Proven
+[The concrete ways this system can be watched doing its job: how to run it locally (command, port, fixtures), endpoints with real example calls, CLI entry points, queries that reveal the data, log destinations and their format, health/metrics endpoints, existing harnesses. Note anything that genuinely CANNOT be observed without a human, real credentials, hardware, or production — that constrains what the plan can promise to prove.]
 
 ## Questions Requiring Answers
 [Ambiguities or unknowns discovered]
@@ -373,9 +391,12 @@ CURRENT STATE:
 [How the system currently works, with file references]
 
 KEY OBSERVATIONS:
-- [Finding 1 with file:line references]
-- [Finding 2 with file:line references]
-- [Finding 3 with file:line references]
+[Each finding quotes the line it rests on, not just its address — '<finding> — <file:line> —
+ evidence: <the actual line>'. Phase 2.25 verifies the load-bearing ones independently and
+ starts from what is quoted here.]
+- [Finding 1] — [file:line] — evidence: [the actual line]
+- [Finding 2] — [file:line] — evidence: [the actual line]
+- [Finding 3] — [file:line] — evidence: [the actual line]
 
 DEPENDENCIES:
 - [External dependencies]
@@ -393,6 +414,9 @@ DEAD CODE & CRUFT:
 
 COUPLED SITES & DRIFT RISKS:
 [Sites that must change in lockstep with this change, each tagged repo + file:line + type (cross-repo contract, consumer repo, mirrored constant/enum, same-repo duplication, or doc describing the behavior). "None — change is self-contained" if isolated. If any site lives in a repo not yet in the plan's repo set, flag it for inclusion.]
+
+OBSERVABILITY:
+[How the affected behavior can be watched from outside — run commands, endpoints with example calls, CLI entry points, revealing queries, log destinations, health endpoints, existing harnesses. Plus anything that cannot be observed without a human, real credentials, hardware, or production. This is the raw material for the plan's proof obligations.]
 
 OPEN QUESTIONS:
 [Ambiguities that need clarification]
@@ -478,6 +502,8 @@ Generate **at least 3 distinct root cause hypotheses** based on exploration find
    - SECONDARY: Plausible alternative explanation
    - TERTIARY: Less likely but possible edge case
    - Additional hypotheses ranked similarly
+
+   This ranking is by **plausibility**, not evidence — every hypothesis here ends `If Confirmed`, and nothing has confirmed one. That is what Phase 2.25 is for: extract the premises the PRIMARY rests on and the ones that DISCRIMINATE between these hypotheses, verify them, and come back. The ranking you hand to Phase 3 must be one Phase 2.25 has already tested — a re-rank on falsified evidence is the system working, not a setback.
 
 **Structured Root Cause Analysis Output:**
 
@@ -782,9 +808,203 @@ Option 3: [Action]
 [Additional options...]
 ```
 
+## PHASE 2.25: Premise Verification
+
+Phase 2 ranked the hypotheses by plausibility and selected a PRIMARY that nothing has confirmed. This phase confirms it — or refutes it, which is more valuable. Extract the beliefs the plan is about to rest on, check them against the code as it actually is, and re-rank if the evidence says something different.
+
+It sits here, before the checkpoint, for a reason: the user must never be asked a load-bearing question premised on a falsehood. (It is numbered 2.25 rather than renumbering 2.5 and everything downstream.)
+
+### What Is and Is Not a Premise
+
+**The load-bearing test: if this were false, would the plan change?** If no, it is context, not a premise. Do NOT verify every fact the investigation turned up — that is a swamp, and the same discipline that caps the Phase 2.5 checkpoint at four questions applies here. Two kinds earn verification:
+
+1. **Load-bearing premises of the selected hypothesis/approach** — the plan collapses without them. "The handler at `api/foo.go:42` is the only writer to this table"; "the column is nullable today".
+2. **Discriminating premises** — ones whose truth value would REORDER the hypothesis ranking. "The retry path is reached at all" separates Hypothesis 1 from Hypothesis 2.
+
+**(2) is the one that pays.** Phase 2 ranks by "likelihood based on evidence", which is ranking by plausibility. Verifying the premises that discriminate upgrades that to ranking by evidence — and can demote the PRIMARY and promote the SECONDARY. That is this command's central promise, and until now it was unfunded. **Verify the premises that would change the answer**, not the ones that are easiest to confirm.
+
+### State the Premise the Plan DEPENDS On — Not the Evidence You Happen to Have
+
+This is the failure that survives every other rule here, because the premise it produces is **true**, verifies cleanly, and holds up nothing.
+
+Test in BOTH directions:
+
+- **If it were false, would the plan change?** (Is it load-bearing?)
+- **If it is TRUE, does the plan work?** (Is it *sufficient* — is it actually the claim being leaned on?)
+
+A premise that passes the first and fails the second is necessary-but-insufficient. It sails through verification and tells you nothing, because the belief the plan actually rests on was never written down. Two real examples, both VERIFIED-true and both fatal:
+
+- Written: *"`ReconcileTable` is the reusable mitigation — OfficeRnD proves it."* True: one caller, and a code comment calls it "the envelope-bloat mitigation". The plan depended on **"`ReconcileTable` is connector-agnostic"** — which was false (it hardcoded one connector's cursor column). It had one caller because it was *coupled* to that connector, not because anyone forgot.
+- Written: *"Per-box compaction is safe — the erasure sweep does it."* True, the erasure sweep does. The plan depended on **"raw's dedup ordering key is deterministic across boxes"** — false, and it would have deleted a different winner on each replica, irreversibly.
+
+Both plans read as well-evidenced. Neither wrote down the claim it was standing on.
+
+**The tell is a premise that argues FOR the approach.** Premises that support the plan are the ones you go looking for; the ones that matter are the ones that could sink it. When a premise reads like a justification, you have written the conclusion. Ask instead: *what would have to be true for this to be a bad idea?* — and make THAT the premise.
+
+### Descriptions Are Not Evidence — Exercise the Mechanism
+
+**A premise's method must exercise the mechanism it claims, not read a description of it.** This is the prove-it standard one tense earlier: there, evidence is the raw output, not a report of it; here, evidence is the mechanism, not a description of it.
+
+These are all descriptions — someone's claim about the code, which is exactly what you are supposed to be checking:
+
+- **A code comment.** "// the envelope-bloat mitigation" is the author's intent, not the behaviour. Read the function.
+- **A runbook or design doc.** Both drift. A runbook prescribed `GRANT SELECT ON <table>` while every working database actually used `db_datareader` — the doc had been wrong for months and nobody noticed, because everyone read it instead of the database.
+- **An analogy to a sibling.** "The erasure sweep does per-box work, so compaction can" — the sibling's ordering key was deterministic; raw's is `DEFAULT now()` stamped per-box. The analogy holds right up until the one property you needed.
+- **A line number without its context.** "Scanned unconditionally at `snapshot_router.go:98`" — line 98 does call it. Line 89 returns first. Read the guard, not the line.
+- **A prior conclusion, including this command's own.** A design doc's "duplication is NOT pathological" was measured on one tenant at 4.0 versions/id and asserted fleet-wide; the tenant in question was at 15–215.
+
+**Scope is part of the claim, and it is where a true premise goes wrong quietly.** Two forms to police:
+
+- **Negative/universal premises** ("nothing consumes X", "this is the only writer", "no other repo references it") must search for the **behaviour** — the URL path, the field name, the call shape — across **every** repo, never for a name someone chose. A grep for "promotion watch" across three of five repos returned VERIFIED for a claim that two other repos falsified: the consumers existed, under a different name, in the repos not searched. Apply the bar to the method's reach: **a search that cannot reach where a counterexample would live looks identical whether or not the premise is true.**
+- **Measurements** are claims about what was measured. One tenant, one box, one day, one table. If the premise generalizes beyond the sample, either widen the sample or narrow the premise.
+
+### Premise vs Assumption — Keep the Distinction
+
+A verified premise is no longer an assumption. But some beliefs genuinely cannot be checked now. The split:
+
+- Checkable claim about the CURRENT system → **premise**. Verify it.
+- Prediction, or a belief about the future or a third party ("traffic stays under 1k rps", "the vendor's API won't change") → **assumption**. State it in `## Assumptions`, marked unverified, with the risk, and move on.
+
+This keeps `## Assumptions` meaningful instead of a dumping ground — and stops a premise being smuggled in as an assumption to dodge the check.
+
+### Step 1: Extract the Candidate Premises
+
+From the Phase 2 output, list the beliefs the PRIMARY rests on plus the ones that discriminate between hypotheses. Apply the load-bearing test to each and cap the list — a handful, not an inventory. For each candidate record:
+
+- **id** — A1, A2, … (assigned here and never renumbered afterwards)
+- **claim** — the claim about the CURRENT system, in one sentence
+- **why load-bearing** — what in the plan changes if this is false: the hypothesis it props up, or the ranking it decides
+- **kind** — LOAD_BEARING or DISCRIMINATING (for DISCRIMINATING, name which hypotheses move, and which way, if it is false)
+- **asserted by** — the exploration agent that surfaced the claim in Phase 1
+- **suggested method** — the grep, query, `git log`, curl, or file read that would settle it
+- **expected** — what that output must show if the premise holds
+
+### Step 2: Verify Each Premise Independently
+
+Launch ONE verification agent per candidate premise, in PARALLEL, using multiple tool calls in a single message.
+
+**The agent that asserted a fact must not be the one that verifies it** — the same logic as prover ≠ implementer: the asserter is the claim under suspicion. Route each premise to an available agent whose type differs from its `asserted by`; the generic `Explore` agent is always eligible. If the asserter is the only agent available for that domain, check it anyway — a same-agent check still beats no check — but log that the verdict is a weaker signal. This is cheap (a grep, a query), so there is no excuse not to.
+
+Run them in parallel and wait for ALL verdicts before deciding anything: the re-rank decision needs the complete set at once. Do not feed one verifier's finding to another — cross-contamination is how one agent's misreading becomes the group's consensus.
+
+**Context Provided to Verification Agents:**
+
+```
+You are VERIFYING A SINGLE PREMISE that a plan is about to be built on.
+
+A premise is a claim about the world AS IT IS — checkable NOW, by looking. Your job is to look, and to report what you actually saw. You are not designing anything, not proposing a fix, and not deciding whether the plan is good. One claim, one check, the raw output.
+
+You did not assert this claim — someone else did, and that is the point. The asserter is the claim under suspicion, so take nothing in the findings below as established. They are the hypothesis you are testing, not evidence.
+
+TASK (context):
+[User's original request or problem description]
+
+MODE: [DEBUGGING / FEATURE / REFACTOR / INVESTIGATION]
+
+HYPOTHESES RANKED IN PHASE 2:
+[Each hypothesis with its rank, likelihood, and mechanism. These are ranked by PLAUSIBILITY — your evidence is what turns this into a ranking by EVIDENCE, so a falsified premise here genuinely reorders them.]
+
+INVESTIGATION FINDINGS (Phase 1 — context only; these are the CLAIMS you are checking, not evidence):
+[Relevant facts and observability notes from exploration]
+
+THE PREMISE YOU MUST CHECK:
+  [id]. [claim]
+     kind: [LOAD_BEARING / DISCRIMINATING]
+     why load-bearing: [what in the plan changes if this is false]
+     discriminates: [which hypotheses move, and which way, if false — omit for LOAD_BEARING]
+     asserted by: [the exploration agent that surfaced it]
+     suggested method (improve on it if you can do better): [the command]
+     expected if it holds: [what the output must show]
+
+HOW TO CHECK IT:
+1. Decide what the output must show for the premise to hold BEFORE you run anything. Deciding after you have seen the output is how a check ratifies whatever it found.
+2. Run the actual check — grep, database query, git log, curl, file read, whatever settles it. Prefer the cheapest thing that discriminates. If the suggested method cannot discriminate, replace it with one that can and say so.
+3. Record the RAW output as your evidence: the matched line with its file:line, the returned rows, the response body, the commit line — verbatim, trimmed to the decisive part.
+
+THE BAR: WOULD THIS EVIDENCE LOOK DIFFERENT IF THE PREMISE WERE FALSE? If a check passes whether or not the premise holds, it is not a check. "I read the file and it looked right" does not clear the bar — quote the line. The evidence IS the output, not a report of the output.
+
+APPLY THAT BAR TO YOUR METHOD, NOT ONLY ITS OUTPUT. A method that could never falsify the claim is the commonest way a FALSE premise comes back VERIFIED — and it is not caught downstream, because the evidence looks real. Three ways it happens:
+
+1. EXERCISE THE MECHANISM — do not read a DESCRIPTION of it. A code comment, a runbook, a design doc's conclusion, an analogy to a sibling ("the erasure sweep does per-box work, so this can"), and a line number read without its surrounding guard are all someone's CLAIM about the code — which is precisely what you were spawned to check. Read the function, run the query, hit the endpoint. A comment saying "// the envelope-bloat mitigation" is intent; the code is behaviour, and one hardcoded connector name in it made that comment a lie. A line does call the thing at :98; the guard at :89 returns first.
+
+2. SCOPE IS PART OF THE CLAIM. For a NEGATIVE or UNIVERSAL premise ("nothing consumes X", "this is the only writer", "no other repo references it"), search for the BEHAVIOUR — the URL path, the field name, the call shape — across EVERY repo, never for a name someone chose. A grep for a chosen name across three of five repos returned VERIFIED for a claim that the other two falsified. A search that cannot reach where a counterexample would live produces identical output whether the premise is true or false. Say in `method` what you searched and where; if you cannot reach some of it, that is a bounded verdict — say so rather than implying you looked. Likewise a MEASUREMENT is a claim about what was measured: one tenant, one box, one table, one day. Do not generalize it.
+
+3. CHECK THE CLAIM, NOT A TRUE NEIGHBOUR OF IT. Before you accept a VERIFIED, ask: IF THIS IS TRUE, DOES THE PLAN WORK? If the plan can still fail with the premise holding, you have verified a necessary-but-insufficient neighbour and the real belief is unstated. Name it in `notes` — that is as valuable as a FALSIFIED, and it is invisible to everyone downstream if you stay silent.
+
+VERDICTS:
+  VERIFIED     — the evidence shows the premise holds.
+  FALSIFIED    — the evidence contradicts it. This is a SUCCESSFUL outcome, not a failure: you have caught a plan being built on sand, which is the entire reason you were spawned. Say what is ACTUALLY true instead, so the hypotheses can be re-ranked against reality rather than merely having one struck out.
+  UNVERIFIABLE — genuinely cannot be checked now: it needs production, real credentials, physical hardware, a human judgement, or a third party. State precisely what blocks it.
+
+UNVERIFIABLE is not an escape hatch. Labelling a checkable premise UNVERIFIABLE to skip the work is the same dodge as mislabelling a proof obligation MANUAL, and Phase 4 audits every one of these labels against the codebase — a bogus one is CRITICAL. Almost anything about the CURRENT code is checkable: a grep settles whether a call site exists, a query settles what the data looks like, git log settles when something changed. Reach for UNVERIFIABLE only when looking is genuinely impossible.
+
+Modify no source. You observe and report; nothing else.
+
+OUTPUT FORMAT:
+
+id: [exactly the id you were given — do not renumber it]
+claim: [the claim you checked, in one sentence]
+why load-bearing: [what in the plan changes if this is false]
+kind: [LOAD_BEARING / DISCRIMINATING, as given]
+discriminates: [which hypotheses your verdict moves, and which way]
+method: [the exact command you RAN, with real paths and arguments — not a description of it]
+expected: [what you decided the output had to show, before you ran it]
+evidence: [the raw output, verbatim]
+verdict: [VERIFIED / FALSIFIED / UNVERIFIABLE]
+notes: [what is actually true instead (FALSIFIED), or what blocks the check (UNVERIFIABLE)]
+
+Begin the check now.
+```
+
+### Step 3: The Gate — FALSIFIED Blocks Finalization
+
+Tally the verdicts once every verifier has returned.
+
+**A FALSIFIED load-bearing premise blocks the plan.** You do not write a plan on a falsified premise and note the problem in a caveat — you **go back to Phase 2**, re-rank the hypotheses in light of the new evidence (each falsified premise's `notes` say what is actually true instead, not merely that the belief was wrong), re-select a PRIMARY, and re-run this phase against the new selection's premises. This is the analogue of REFUTED blocking the implementation loop, and it is the mechanism by which verification IMPROVES the plan rather than just annotating it.
+
+Loop until no load-bearing premise is falsified. If re-ranking exhausts the hypotheses — every candidate rests on something false — that is a genuine finding: stop and take it to the user rather than planning on the least-refuted option.
+
+UNVERIFIABLE premises do not block. They pass through to `## Assumptions`, marked unverified, and `/implement-plan` surfaces them alongside the unproven obligations.
+
+Carry the VERIFIED premises forward to Phase 3 as settled ground — evidence and all, verbatim. They are what the design stands on and cites, not beliefs to re-argue.
+
+### Output Format
+
+```
+PREMISE VERIFICATION
+
+CANDIDATE PREMISES: [N] ([M] load-bearing, [K] discriminating)
+
+  ✓ A1 VERIFIED     The handler at api/foo.go:42 is the only writer to accounts.status
+      method:   rg -n 'accounts.*status\s*=' --type go
+      expected: exactly one write site, in api/foo.go
+      evidence: api/foo.go:42:  acct.Status = req.Status   (only match in the repo)
+
+  ✗ A2 FALSIFIED    The retry path re-reads the row before writing
+      method:   sed -n '58,74p' internal/jobs/retry.go
+      expected: a SELECT before the UPDATE
+      evidence: internal/jobs/retry.go:63:  return r.update(ctx, cached)  — writes the CACHED
+                row; there is no re-read
+      actually: the retry writes a stale snapshot, which is Hypothesis 2's mechanism, not
+                Hypothesis 1's
+
+  ⚠ A3 UNVERIFIABLE Prod runs the same schema version as staging
+      blocked by: needs production DB access
+
+RE-RANK REQUIRED: yes — A2 falsified
+  Hypothesis 1 (was PRIMARY): demoted — its mechanism requires the re-read that A2 shows is absent
+  Hypothesis 2 (was SECONDARY): promoted to PRIMARY — A2's evidence IS its mechanism
+
+Returning to Phase 2 to re-select. No plan is written on a falsified premise.
+```
+
+### When to Skip This Phase
+
+Skip only when the plan genuinely rests on nothing checkable: a trivial single-file edit, or a task where every hypothesis shares the same premises AND those premises are the change itself. Log clearly: `[Phase 2.25] Skipped — no load-bearing premises to verify.` and continue. Skipping because the checks look tedious is how a plan ends up on sand.
+
 ## PHASE 2.5: Interactive Decision Checkpoint
 
-After Phase 2 selects a PRIMARY hypothesis/approach, and before Phase 3 begins detailed design, grill the user on the load-bearing decisions that — if answered differently — would invalidate the downstream plan. This is the single user-interactive moment in `/create-plan`. Use it sparingly: the goal is to catch high-leverage forks, not to interrogate.
+After Phase 2 selects a PRIMARY hypothesis/approach and Phase 2.25 verifies the premises it rests on, and before Phase 3 begins detailed design, grill the user on the load-bearing decisions that — if answered differently — would invalidate the downstream plan. This is the single user-interactive moment in `/create-plan`. Use it sparingly: the goal is to catch high-leverage forks, not to interrogate.
 
 ### When to Skip This Phase
 
@@ -863,9 +1083,11 @@ Resolved decisions are appended to the plan file in Phase 5 (under a "Resolved D
 
 ## PHASE 3: Design & Planning
 
-In this phase, take the PRIMARY hypothesis (debugging) or RECOMMENDED approach (feature) and flesh it out into an implementation plan.
+In this phase, take the PRIMARY hypothesis (debugging) or RECOMMENDED approach (feature) — the one Phase 2.25 has verified the premises of — and flesh it out into an implementation plan.
 
-**Important**: If the user wants to pursue a different hypothesis or approach than recommended, they can specify this before Phase 3 begins. Otherwise, proceed with the recommended option.
+**Important**: If the user wants to pursue a different hypothesis or approach than recommended, they can specify this before Phase 3 begins. Otherwise, proceed with the recommended option. A hypothesis switched in here has not had its premises verified — re-run Phase 2.25 against the new selection rather than designing on unchecked beliefs.
+
+**Design on the verified premises, and cite them.** Where a phase, a file change, or a risk assessment depends on a premise, name its id (`rests on **A2**`). That is what lets a reader — and `/implement-plan`, which re-checks the premises before writing any code — see exactly which part of the plan collapses if a premise goes stale. A premise nothing in the design cites was not load-bearing after all. If the design needs a claim about the current system that no verified premise covers, flag it rather than quietly assuming it: Phase 4 catches that as CRITICAL.
 
 ### Invoke Planning Agents
 
@@ -950,6 +1172,35 @@ Clear, testable criteria for considering this work complete:
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Criterion 3
+
+## Proof Obligations
+
+EVERY success criterion above gets exactly one obligation here — this is the evidence that will
+be demanded before the work is called done, and an independent prover will discharge it.
+
+For each, give:
+- **id** — P1, P2, … (reference it from the criterion)
+- **claim** — the criterion, in one sentence
+- **class** — MECHANICAL or MANUAL (see below)
+- **method** — the EXACT command to run, with real paths, payloads, and any setup needed
+  (start the server how? seed what?). Draw on the investigation's Observability findings; do not
+  invent a command that does not exist.
+- **expected** — the pass condition: what the output must show. Be specific enough that someone
+  could look at the output and say pass or fail without knowing your intent.
+
+**MECHANICAL vs MANUAL.** MECHANICAL means a command runnable unattended — HTTP calls against a
+locally started server, CLI invocations, database queries, log reads, a binary's output, a
+headless screenshot of a dev server. This is the default and it covers more than you'd assume.
+MANUAL means it genuinely needs human judgement, real credentials, hardware, or production. Only
+MECHANICAL obligations block the implementation run, so every one you label MANUAL is a criterion
+nobody will check — mark them MANUAL only when they truly are, and keep them few.
+
+**The bar every obligation must clear: would its evidence look different if the change were
+broken or absent?** "Run the test suite" fails that bar for a behavioral claim — the suite is
+green either way once a test is written to match the bug. Prove the claim at the outermost layer
+a user feels it: if the criterion is about a rendered page, prove the page; if it is about data,
+show the rows. A criterion you cannot write a discriminating obligation for is a criterion too
+vague to be in the plan — sharpen it or drop it.
 
 Provide the plan in structured markdown format.
 ```
@@ -1295,6 +1546,15 @@ YOUR REVIEW FOCUS:
 - Code quality and maintainability
 - Adherence to project coding standards
 - Coupled-site completeness: hunt for MISSED sites that must change in lockstep — cross-repo contracts/consumers, mirrored constants/enums, same-repo duplication, and docs describing the changed behavior. A missed site that breaks a contract or leaves a consumer repo stale is CRITICAL; a missed doc or comment is a WARNING.
+- Proof adequacy — attack the Proof Obligations section specifically. For each obligation ask: would this evidence look ANY different if the change were broken or absent? Flag as CRITICAL: a success criterion with no obligation; an obligation whose method is a green test suite standing in for a behavioral claim, a status code with an unchecked body, or anything else that passes regardless of the change; an obligation labelled MANUAL that is plainly runnable (an endpoint, a CLI flag, a query, a servable page) — that is a criterion nobody will ever check. Flag as WARNING: a method too vague to run as written (no real path, payload, or setup), or an expectation so loose that both a working and a broken implementation would satisfy it.
+- Premise adequacy — attack the Premises section specifically. Proof cannot save this plan from a false premise: the prover would faithfully confirm the change does exactly what the plan said, and the plan was wrong. The premises are the only guard against a confidently-built mistake, so audit them as hard as the obligations. Flag as CRITICAL: a load-bearing belief about the CURRENT system with no premise covering it (apply the test — if this were false, would the plan change? If yes, and nothing verified it, it is uncovered); a premise whose method cannot discriminate (it would produce the same output whether the premise held or not, or its "evidence" paraphrases rather than quotes the raw output); a premise marked UNVERIFIABLE that a grep, a query, or a `git log` would plainly settle — the same dodge as mislabelling an obligation MANUAL, and the same verdict. Flag as WARNING: a design that leans on an UNVERIFIABLE premise without carrying it into Assumptions as unverified; a prediction or third-party belief dressed up as a premise when it belongs in Assumptions; a premise the design cites nowhere (it was not load-bearing, so it is noise).
+
+  Then attack the premises that are VERIFIED, which is where the real danger sits — a false plan built on true premises passes every check above. Flag as CRITICAL:
+  - **A premise that is true but insufficient.** Ask of each: *if this is TRUE, does the plan work?* If the plan can still fail with every premise holding, the belief it rests on was never written down. ("`ReconcileTable` is the reusable mitigation" — true, and the plan died because it was connector-coupled. "The erasure sweep does per-box work" — true, and per-box compaction would still have destroyed data.) Name the unstated claim.
+  - **A premise whose evidence is a description rather than the mechanism** — a code comment, a runbook, a design doc's conclusion, an analogy to a sibling, or a line number read without its surrounding guard. Those are the author's claim, which is what the premise was supposed to check.
+  - **A premise that generalizes beyond its sample** — a measurement on one tenant, box, table, or day asserted fleet-wide; or a negative ("nothing consumes X") established by searching some repos for a name rather than every repo for the behaviour.
+
+  Test yourself the way you would a proof obligation: **construct the world in which this premise is true and the plan is still wrong.** If you can, say so — that construction is the finding.
 
 Provide feedback in these categories:
 
@@ -1475,6 +1735,23 @@ All critical items addressed. Proceeding to final plan output.
 
 Generate the final plan file ready for `/implement-plan` consumption.
 
+### Record the Premises
+
+Write the Phase 2.25 verdicts into the plan file's `## Premises` section verbatim — claim, why load-bearing, method, and the RAW evidence — keeping the ids they were assigned there. Genuinely unverifiable beliefs go into the slimmed `## Assumptions` section, marked unverified with the risk if wrong; anything checkable belongs in Premises instead.
+
+**Never finalize on a FALSIFIED premise.** That is a return to Phase 2 to re-rank and re-select, not a caveat in the plan file. A falsified premise never reaches this step.
+
+### Consolidate the Proof Obligations
+
+Each planning agent wrote obligations against its own criteria, so the plan file needs ONE
+`## Proof Obligations` section: merge them, renumber to unique ids (P1, P2, …), drop duplicates
+where two planners proved the same criterion, and cross-reference every Success Criterion to the
+id that settles it.
+
+Before writing the file, check both directions: every functional criterion has an obligation, and
+no obligation's method would pass regardless of the change. An unprovable criterion is the one
+thing `/implement-plan` cannot enforce for you — its prover can only run what this plan names.
+
 ### Determine Plan Filename
 
 Create plan file in `.claude/plans/` with descriptive name:
@@ -1587,7 +1864,9 @@ Decisions settled during the Phase 2.5 checkpoint that constrain the plan. Omit 
 [Detailed description of what to implement, how it should work]
 
 **Verification:**
-[How to verify this phase is complete]
+[The runnable command that shows this phase actually works, and what its output must show —
+not "check that it works". Phase-level verification is the same discipline as a Proof
+Obligation, scoped to one phase; if this phase delivers a criterion, name its P-id here.]
 
 ---
 
@@ -1651,21 +1930,109 @@ After implementation, verify success by:
 
 ## Success Criteria
 
+Every functional criterion cites the Proof Obligation that settles it (see the next section).
+
 - [ ] All unit tests pass
 - [ ] All integration tests pass
-- [ ] [Specific functional requirement met]
-- [ ] [Specific functional requirement met]
-- [ ] No performance degradation (if applicable)
+- [ ] [Specific functional requirement met] — proven by **P1**
+- [ ] [Specific functional requirement met] — proven by **P2**
+- [ ] No performance degradation (if applicable) — proven by **P3**
 - [ ] Documentation updated
 - [ ] No dead code, unused imports, or orphaned files remaining
 - [ ] No coupled site left stale — docs and cross-repo contracts updated in lockstep
 - [ ] Code review passed
 
+## Proof Obligations
+
+How each criterion above will be PROVEN, not asserted. `/implement-plan` hands these to an
+independent prover (never the implementer), which runs each method and reports the raw output;
+a REFUTED obligation blocks the run exactly like a failing test.
+
+### P1 — [The claim, in one sentence]
+**Criterion:** [which Success Criterion this settles]
+**Class:** MECHANICAL
+**Repo:** `<repo>` (omit for single-repo plans)
+**Method:**
+```bash
+# the exact command, with any setup — real paths, real payloads
+just run &                       # e.g. start the service on :8080
+curl -s localhost:8080/api/foo/7
+```
+**Expected:** [what the output must show — specific enough to call pass/fail without knowing the
+author's intent, e.g. "body includes `\"status\":\"active\"`; before this change the field is absent"]
+
+### P2 — [The claim]
+**Criterion:** [which Success Criterion]
+**Class:** MECHANICAL
+**Method:** `psql -c "SELECT count(*) FROM v_active_accounts"`
+**Expected:** [e.g. "41 — the 6 archived accounts excluded; today it returns 47"]
+
+### P3 — [The claim]
+**Criterion:** [which Success Criterion]
+**Class:** MANUAL
+**Method:** [what a human must do, and why no command can substitute]
+**Expected:** [what they should see]
+**Why manual:** [needs human judgement / real credentials / hardware / production access]
+
+Every criterion has exactly one obligation. Each obligation's evidence must look DIFFERENT if the
+change were broken or absent — otherwise it proves nothing and belongs in the bin, not the plan.
+MANUAL obligations are not checked by `/implement-plan`; they are handed back to the user as
+outstanding, so keep them to what genuinely cannot be automated.
+
+## Premises
+
+What this plan RESTS ON, and the evidence that each is actually true. These are claims about the
+system **as it is** — verified at plan time in Phase 2.25, independently of whoever asserted them.
+Proof obligations (above) cover what will be true AFTER the change; these cover what is true NOW.
+A false premise cannot be caught by proof — the prover would confirm the change does exactly what
+this plan said, and this plan would be wrong — which is why they are checked here instead.
+
+`/implement-plan` re-checks these cheaply before writing any code, since a plan run a week later can
+rest on a premise that has since gone stale. Each method below is what it re-runs.
+
+### A1 — [The claim about the current system, in one sentence]
+**Why load-bearing:** [what in this plan changes if this is false — the phase it props up, or the
+hypothesis ranking it decides]
+**Method:** `rg -n 'accounts.*status\s*=' --type go`
+**Expected:** [what the output must show if the premise holds]
+**Evidence:**
+```
+api/foo.go:42:  acct.Status = req.Status
+```
+**Verdict:** VERIFIED
+
+### A2 — [The claim]
+**Why load-bearing:** [what changes if false]
+**Method:** `psql -c "SELECT is_nullable FROM information_schema.columns WHERE column_name='status'"`
+**Expected:** [e.g. "is_nullable = YES; the migration in Phase 2 depends on it"]
+**Evidence:**
+```
+ is_nullable
+-------------
+ YES
+```
+**Verdict:** VERIFIED
+
+### A3 — [The claim]
+**Why load-bearing:** [what changes if false]
+**Method:** [what would check it, if it could be checked]
+**Verdict:** UNVERIFIABLE
+**Blocked by:** [needs production access / a human / real credentials / a third party]
+**Risk if false:** [what breaks — this one is NOT established, and the plan proceeds anyway]
+
+Every premise's evidence is the RAW output, quoted — not "I checked and it looked right". No premise
+here is FALSIFIED: a falsified premise sends the plan back to Phase 2 to be re-ranked and re-selected,
+so it never reaches this file. UNVERIFIABLE premises are the exception, not the escape hatch — anything
+a grep, a query, or a `git log` could settle is VERIFIED or the plan is not finished.
+
 ## Assumptions
 
-- [Assumption 1]
-- [Assumption 2]
-- [Assumption 3]
+Beliefs this plan rests on that **genuinely cannot be verified now** — predictions, future states,
+and third parties. Anything checkable about the current system is a Premise above, not an assumption;
+this section is deliberately short. **These are UNVERIFIED and remain so.**
+
+- [Prediction — e.g. "traffic stays under 1k rps through the migration window"] — unverified; risk if wrong: [impact]
+- [Third-party behavior — e.g. "the vendor's API contract does not change before rollout"] — unverified; risk if wrong: [impact]
 
 **If any assumption is invalid, revisit this plan before implementation.**
 
@@ -1841,12 +2208,32 @@ Provide clear progress updates at each phase transition:
 [Phase 2] Beginning Multi-Hypothesis Analysis...
 ```
 
-### Phase 2 → Phase 2.5
+### Phase 2 → Phase 2.25
 ```
 [Phase 2] Analysis Complete
   Hypotheses Generated: [N]
   Primary Hypothesis: [Brief description]
-  Likelihood: HIGH (based on [key evidence])
+  Likelihood: HIGH (based on [key evidence]) — ranked by plausibility, not yet confirmed
+
+[Phase 2.25] Verifying premises...
+  Candidate Premises: [N] ([M] load-bearing, [K] discriminating)
+```
+
+### Phase 2.25 → Phase 2.5
+```
+[Phase 2.25] Premise Verification Complete
+  Verified: [N]
+  Falsified: [N]
+  Unverifiable: [N]
+  [If skipped]: Skipped — no load-bearing premises to verify
+
+  [If any falsified]:
+  RE-RANK REQUIRED — returning to Phase 2:
+  [One line per falsified premise: A[n] — the claim → what the evidence shows instead]
+  [The re-ranking: which hypothesis is demoted, which promoted, and on which premise's evidence]
+
+  [If none falsified]:
+  Primary Hypothesis holds — now ranked by evidence, not plausibility ✓
 
 [Phase 2.5] Identifying load-bearing decisions to grill...
 ```
@@ -2063,8 +2450,10 @@ The plan files created by `/create-plan` are designed to be consumed directly by
 1. **Clear phase structure** - Phases can be parallelized by `/implement-plan`
 2. **Explicit file paths** - Absolute or project-relative paths
 3. **Testable success criteria** - `/implement-plan` can verify completion
-4. **Agent work scope** - Clear which agent handles which phase
-5. **Database migrations** - Separate from code changes for Dan's review
+4. **Premises section** - the plan's load-bearing beliefs about the current system, each with the exact command that checks it. `/implement-plan` re-runs these cheaply before any code is written, because a plan run a week later can rest on a premise that has since gone stale — and a falsified one stops the run rather than burning five iterations implementing on sand
+5. **Proof Obligations section** - one runnable obligation per criterion, each with a real method and a specific expectation. `/implement-plan`'s prover executes these verbatim and blocks on refutation. Omit the section and the prover derives obligations from the Success Criteria itself — worse, because it has to guess the method from the outside
+6. **Agent work scope** - Clear which agent handles which phase
+7. **Database migrations** - Separate from code changes for Dan's review
 
 **Workflow:**
 ```
@@ -2092,13 +2481,15 @@ If task description omitted, use conversation context to infer task.
 2. **Trace from outer to inner layers** - Systematic investigation approach
 3. **Verify through code reading** - Don't assume based on descriptions
 4. **Explicit verification steps** - Every hypothesis/approach has verification
-5. **Structured output** - Plan files ready for `/implement-plan`
-6. **Multi-agent review** - Eric, Dan (if DB), Wigsy always review
-7. **Progress transparency** - Clear reporting at each phase
-8. **Graceful degradation** - Handle missing agents and insufficient context
-9. **User decision points** - In Phase 2.5, ask the user about load-bearing decisions that can't be resolved from code alone (max 4 questions, recommended answer attached, sequential not batched)
-10. **Document alternatives** - Preserve all approaches considered for future reference
-11. **Anti-drift discipline** - Enumerate every coupled site a change touches (cross-repo contracts, docs, same-repo duplication) in a "Ripple Effects / Coupled Sites" section; reviewers hunt for missed sites; no coupled site left stale, and any repo a coupled site lives in is pulled into the plan's repo set
+5. **Verify the premises** - The plan's load-bearing beliefs about the CURRENT system are checked in Phase 2.25 before the plan is written, by an agent other than the one that asserted them, with the raw output as evidence. Verify the premises that would CHANGE THE ANSWER: that is what turns Phase 2's ranking-by-plausibility into ranking-by-evidence. A falsified premise sends the plan back to Phase 2 to be re-ranked — never into the plan file as a caveat. Proof cannot catch a false premise, so nothing downstream is a substitute for this
+6. **Prove it** - Every success criterion carries a Proof Obligation: a real runnable method and a specific expectation whose evidence would look DIFFERENT if the change were broken. Criteria that cannot be proven discriminatingly are too vague to ship; MANUAL obligations are the exception, not the escape hatch
+7. **Structured output** - Plan files ready for `/implement-plan`
+8. **Multi-agent review** - Eric, Dan (if DB), Wigsy always review
+9. **Progress transparency** - Clear reporting at each phase
+10. **Graceful degradation** - Handle missing agents and insufficient context
+11. **User decision points** - In Phase 2.5, ask the user about load-bearing decisions that can't be resolved from code alone (max 4 questions, recommended answer attached, sequential not batched)
+12. **Document alternatives** - Preserve all approaches considered for future reference
+13. **Anti-drift discipline** - Enumerate every coupled site a change touches (cross-repo contracts, docs, same-repo duplication) in a "Ripple Effects / Coupled Sites" section; reviewers hunt for missed sites; no coupled site left stale, and any repo a coupled site lives in is pulled into the plan's repo set
 
 ## Execution Flow Summary
 
@@ -2116,15 +2507,27 @@ Phase 1: Systematic Exploration
     ├─ Trace from entry points inward (layer-by-layer)
     ├─ Examine tests and git history
     ├─ Map coupled sites across this + sibling repos (drift risk)
-    ├─ Document findings thoroughly
+    ├─ Record observability: how this behavior can be watched from outside
+    ├─ Document findings thoroughly — every fact QUOTES the line it rests on
     └─ Aggregate exploration findings
     ↓
 Phase 2: Multi-Hypothesis Analysis
     ├─ Generate minimum 3 hypotheses/approaches
     ├─ Apply systematic analysis frameworks
     ├─ Structure each option with evidence
-    ├─ Rank by likelihood/feasibility
-    └─ Select PRIMARY option (user can override)
+    ├─ Rank by likelihood/feasibility (plausibility — not yet confirmed)
+    ├─ Select PRIMARY option (user can override)
+    └─ Extract candidate premises: load-bearing + discriminating
+    ↓
+Phase 2.25: Premise Verification  ◄──────────────┐
+    ├─ Load-bearing test: if false, would the plan change?
+    ├─ Verify independently — never the agent that asserted it
+    ├─ Method + expected + RAW evidence per premise
+    ├─ Verdict: VERIFIED / FALSIFIED / UNVERIFIABLE
+    ├─ If FALSIFIED → re-rank hypotheses on the new evidence ──┘
+    │   (a falsified premise blocks finalization; it never
+    │    reaches the plan file as a caveat)
+    └─ Ranking is now by evidence, not plausibility
     ↓
 Phase 2.5: Interactive Decision Checkpoint
     ├─ Identify 2-4 load-bearing decisions (max 4)
@@ -2135,9 +2538,11 @@ Phase 2.5: Interactive Decision Checkpoint
     ↓
 Phase 3: Design & Planning
     ├─ Launch planning agents (Shane, Eric, Dan, etc.)
+    ├─ Design on the VERIFIED premises, citing them by id
     ├─ Create detailed implementation plan
     ├─ Break into phases with file-level changes
     ├─ Design testing strategy
+    ├─ Write a Proof Obligation per success criterion (method + expectation)
     └─ Identify risks and mitigations
     ↓
 Phase 4: Multi-Agent Review
@@ -2145,6 +2550,10 @@ Phase 4: Multi-Agent Review
     ├─ Dan reviews database (parallel, if applicable)
     ├─ Wigsy reviews security/quality + hunts for missed coupled sites (parallel)
     ├─ Proompty reviews prompts (parallel, if applicable)
+    ├─ Attack proof adequacy: uncovered criteria, evidence that would look the
+    │   same if the change were absent, criteria dodged as MANUAL
+    ├─ Audit premise adequacy: uncovered load-bearing beliefs, methods that
+    │   cannot discriminate, checkable premises dodged as UNVERIFIABLE
     ├─ Aggregate feedback
     ├─ If critical items → Revise plan
     └─ Confirm plan approval

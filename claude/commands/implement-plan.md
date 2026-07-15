@@ -26,6 +26,36 @@ If the user has not compacted and context is limited, proceed anyway but be awar
 6. Handle conflict resolution and agent coordination
 7. Provide clear progress reporting throughout execution
 
+## Prove it
+
+An agent reporting "implemented, tests pass" has made a **claim**, not shown evidence. A change can turn the suite green while doing nothing the plan asked for, and a diff can look correct while the running system does not work. So nothing in this command is complete on assertion: every success criterion in the plan is a **proof obligation**, and an independent **prover** discharges it by exercising the change — curl the endpoint, run the CLI, query the database, screenshot the page, read the logs — and reporting the raw output it observed.
+
+The rules:
+
+- **The prover is never the implementer.** An implementer vouching for its own work is precisely the claim under suspicion. The prover reads no summary and takes no assurances; it observes the running system, and it modifies no source.
+- **Evidence is the raw output, inline.** The returned rows, the response body, the log lines, the printed value — quoted verbatim, trimmed to the decisive part. "The query returns the right rows" is a claim; the rows are evidence. Only evidence that genuinely cannot be inlined (a screenshot, oversized output) becomes an artifact — park it outside every repo working tree (a scratchpad dir, or wherever the user asked proof to land) and cite the path.
+- **The standard: would this evidence look different if the change were broken or absent?** If not, it proves nothing. A green suite does not prove a UI renders; a 200 does not prove the body is right; a log line saying "starting" does not prove the work finished. Prove the claim at the outermost layer a user feels it.
+- **Only refuted proof blocks.** An obligation is MECHANICAL (a command runnable unattended — the default, and it covers more than you'd assume) or MANUAL (needs a human, real credentials, hardware, or an unreachable environment). REFUTED — evidence contradicting the claim — is CRITICAL and keeps the loop iterating. BLOCKED and MANUAL ride out as warnings the human is handed; they never stall the run.
+- **Mislabelling is the gaming vector, and Wigsy is the guard.** The cheap escape is to call a runnable obligation MANUAL or BLOCKED and skip the work, so Wigsy audits every such label against the diff; a bogus one is CRITICAL, which blocks. It equally flags any success criterion with no obligation covering it.
+
+`/create-plan` writes the plan's `## Proof Obligations` section, so the standard is set before anyone writes code. When a plan has no such section (hand-written, or older), the prover derives one obligation per success criterion — a plan without an explicit proof block still has to be proven.
+
+## Premises
+
+Proof is a claim about what will be true AFTER the change. A **premise** is a claim about the world AS IT IS that the plan depends on — checkable now, by looking. The tense is the whole distinction, and it is why premises are not simply another obligation class: **proof cannot catch a false premise.** The prover would faithfully confirm the change does exactly what the plan said, and the plan was wrong. Green run, wrong outcome.
+
+Premises are **established at plan time** — that is `/create-plan`'s job, and the plan file carries them in a `## Premises` section, each entry naming the exact method that checks it. Here they are only **re-checked**, cheaply, before any code is written. A plan run a week after it was written can rest on a premise that has since gone stale: the function it depends on changed signature, the flag it assumed flipped, the table it queries was dropped, the bug it fixes was already fixed by someone else. The plan hands over the check command for free — re-running it costs a grep.
+
+The rules:
+
+- **The re-check is independent.** It takes the plan's claim and the current repository — never the plan's recorded evidence, which was captured when the plan was written and is precisely what may have gone stale. Accepting that recorded output as the answer makes the whole step a no-op. Same logic as prover ≠ implementer: the asserter is the claim under suspicion.
+- **The same bar as proof, one tense back: would this evidence look different if the premise were FALSE?** A check that passes whether or not the premise holds is not a check. "I read the file and it looked right" does not clear it — quote the line. Evidence is the raw output, inline and verbatim, exactly as in proof.
+- **A FALSIFIED premise ABORTS the run before implementation.** Verdicts are VERIFIED / FALSIFIED / UNVERIFIABLE. Falsified means the plan is built on sand: nothing is implemented, and the report names the premise, what the plan expected, and what was actually observed, so the user can fix the plan. Burning five verify iterations building on a false premise produces a correct implementation of the wrong thing.
+- **UNVERIFIABLE premises pass through.** Some beliefs genuinely cannot be checked from here — they need production, a human, or a third party. They never block; they surface in the final report alongside the unproven obligations. Marking a *checkable* premise UNVERIFIABLE is the same dodge as mislabelling an obligation MANUAL, and gets the same scepticism.
+- **No `## Premises` section → skip cleanly.** A hand-written or older plan simply has none. Do not invent premises and do not block: this is a re-check, not a first check, and a premise reverse-engineered from a finished plan is shaped to fit it — it would ratify the plan rather than test it.
+
+Ids are `A1…` — the old `## Assumptions` section grown teeth. Proof obligations stay `P1…`; the two never share a namespace. What remains in `## Assumptions` is only what genuinely cannot be checked now (predictions, third parties, future states), which is why an unverifiable premise is a real category and not a failure.
+
 ## Multi-Repo Support
 
 A plan often spans **several repositories** — e.g. a backend service repo plus its frontend consumer repo, or the same mechanical change fanned across many repos. This orchestrator handles that first-class: each work item is scoped to the repo it lives in, and worktrees, integration branches (`integration-<timestamp>` — one PER repo), test runs, fix passes, and cleanup all fan out **per repo**. Repos are separate git histories, so you never merge across them.
@@ -138,7 +168,65 @@ Proceeding to plan review...
 
 ## PHASE 1: Multi-Agent Plan Review
 
-Execute reviewer consultations in PARALLEL using multiple tool calls. Each reviewer examines the plan from their domain expertise.
+First re-check the plan's premises (below) — a cheap gate that stops the run if the plan rests on something no longer true. Then execute reviewer consultations in PARALLEL using multiple tool calls. Each reviewer examines the plan from their domain expertise.
+
+### Premise Re-Check
+
+Run this FIRST, before the reviewer panel. It is one cheap agent, and it can end the run — there is no point spending the whole panel critiquing a plan whose foundation is about to be rejected. Invoke ONE plain agent: not an implementer, not a reviewer, and never an agent that had a hand in writing the plan.
+
+**Step 1: Read the plan's `## Premises` section.**
+
+Each entry gives an id (`A1`, `A2`, …), the claim, why it is load-bearing, the exact method that checks it, and what that method is expected to show.
+
+If the plan has no such section — hand-written, or written before this discipline existed — SKIP cleanly: report that there was nothing to re-check and proceed to the reviewers. Do NOT invent premises. Establishing them is `/create-plan`'s job, and a premise reverse-engineered from a finished plan is shaped to fit it.
+
+**Step 2: Re-run each premise's method against the CURRENT repository.**
+
+Take the plan's claim and its method — the exact command that checks it — and run it now. Do NOT read the plan's recorded `evidence` as the answer: it was captured when the plan was written and is precisely what may have gone stale. Record the raw output inline, verbatim and trimmed to the decisive part, exactly as the Proof Phase does.
+
+Multi-repo plans: each premise is checked in the repo its method points at. A premise naming no repo belongs to the plan's primary repo.
+
+If the method no longer runs verbatim (a path moved, a command was renamed), adapt it minimally to check the SAME claim and say what changed. If it cannot run because the thing it points at no longer exists, that is usually evidence the premise is FALSE, not a reason to call it unverifiable — quote the error and rule on the claim.
+
+**Step 3: Assign a verdict.**
+
+- **VERIFIED** — the evidence shows the premise holds.
+- **FALSIFIED** — the evidence contradicts it. The plan is built on sand.
+- **UNVERIFIABLE** — genuinely cannot be checked from here: needs production, a human, real credentials, or a third party.
+
+The bar is proof's bar, one tense back: **would this evidence look different if the premise were FALSE?** Calling a checkable premise UNVERIFIABLE is the same dodge as mislabelling an obligation MANUAL, and it is tempting for the same reason — it does not block. Lean hard the other way.
+
+The checker modifies no source. It does not fix a premise it falsifies either: the plan is what needs fixing, and that is the user's call.
+
+**Step 4: Gate.**
+
+Any FALSIFIED premise ABORTS the run. Do not run the reviewers, do not implement, do not burn the review loop implementing on sand — the prover downstream would faithfully confirm the code does what the plan said, and the plan is wrong. Report FAILED with the premise named, what it expected, and what was actually observed, so the user can fix the plan (see Phase 4).
+
+UNVERIFIABLE premises do NOT block. Carry each one — id, claim, why load-bearing, and what blocks the check — through to the final report as still-unverified, alongside the unproven obligations.
+
+**Step 5: Report.**
+
+```
+[Phase 1] Premise Re-Check
+  ✓ A1 VERIFIED      The auth middleware runs before the rate limiter
+      rg -n 'r\.Use\(' cmd/server/main.go
+      evidence: 42: r.Use(auth.Middleware)
+                43: r.Use(rate.Limiter)
+  ⚠ A3 UNVERIFIABLE  The vendor's /v2 endpoint returns 410 for archived records
+      needs the vendor's production API; no sandbox available
+
+  0 falsified → proceeding to the reviewer panel
+  1 unverifiable → carried to the final report
+```
+
+If the plan has no premises:
+
+```
+[Phase 1] Premise Re-Check
+  - Skipped: the plan has no ## Premises section (nothing to re-check)
+```
+
+If a premise is falsified, stop here and render the Phase 4 falsified-premise report.
 
 ### Eric's Architecture Review
 
@@ -625,6 +713,28 @@ The code from those items is available in your working directory base.
 - DO NOT commit changes - leave them staged or unstaged
 - DO NOT implement other work items - they are being handled separately
 
+--- IF THE WORK ITEM IS WRONG, SAY SO AND STOP ---
+You may find your item rests on something untrue of this repo: the feature already exists, the thing
+it says to reuse is not reusable, the file it names does not do what the plan claims, or doing it as
+written would break something. REPORT THAT AND STOP. It is a SUCCESSFUL outcome — the same way a
+REFUTED proof obligation is a successful outcome for the prover. Say what you found, quote the
+evidence, and say what you believe is actually true. A refuted plan caught before implementation is
+worth far more than code.
+
+What you must NOT do is fill the gap with adjacent work. Two real outcomes from one run, same wall:
+  - An agent asked to add an optimisation found it already in production. It changed nothing — which
+    was correct — but shipped a test pinning the existing behaviour and reported the item done. The
+    diffstat read "+39 lines"; strip the comments and the production diff was EMPTY. The refutation
+    was the whole finding, and it stayed invisible for hours because nobody said it out loud.
+  - An agent asked to build a destructive compaction proved the plan's safety premise false, REFUSED
+    to build it, shipped a read-only evidence probe instead, and said exactly that in its summary.
+That second one is the model. Refuse loudly; never let a diffstat imply work that is not there.
+
+So: if you implement nothing, say "I implemented nothing, here is why" in your completion report and
+list NO files changed. Do not add a test, a comment, or a doc to make the item look serviced. If you
+implement PART of it, say which part and why the rest is refused. The one unacceptable outcome is a
+report that reads like the item was done when it was not.
+
 IMPORTANT: After all work is integrated, the project's test suite will be run
 automatically. Any test failures will be treated as CRITICAL issues and will
 trigger another iteration to fix them. Write tests that pass and verify your
@@ -973,9 +1083,52 @@ This structured test failure report will be prepended to Wigsy's review context.
 - Do not block on warnings
 - Include warnings in review context for Wigsy
 
+### Proof Phase
+
+Runs alongside Test Execution (they are independent observations of the same integrated code — invoke them in the same round of tool calls). Tests prove the suite is green; **this proves the plan's success criteria are actually met**. Invoke ONE prover per repo — a plain agent, NOT any of the implementers, and never the agent that wrote the code under proof.
+
+**Step 1: Establish the obligations (first iteration only)**
+
+Take the plan's `## Proof Obligations` section, scoped to this repo. If the plan has none, derive one obligation per Success Criterion (and per phase-level Verification step), assigning stable ids (P1, P2, …). Freeze this list and carry it yourself across the review loop: later iterations re-prove exactly these obligations, verbatim. Never let the loop drop, soften, or reword a claim because it failed last round — that converts a failing gate into a passing one without changing the code.
+
+**Step 2: Classify each obligation**
+
+- **MECHANICAL** — a command runnable unattended. This is the default and it covers more than you'd assume: HTTP calls against a locally started server, CLI invocations, database/warehouse queries, log reads, a built binary's output, a script, headless browser screenshots of a dev server.
+- **MANUAL** — genuinely needs human judgement, real credentials the agent lacks, physical hardware, or an unreachable environment (e.g. production).
+
+Lean MECHANICAL. Labelling a runnable obligation MANUAL to dodge the work is the failure mode this gate exists to catch.
+
+**Step 3: Discharge each mechanical obligation**
+
+1. Run the method — start whatever is needed (dev server, test DB) and tear it down after.
+2. Record the RAW output inline as the evidence, verbatim and trimmed to the decisive part. Not a paraphrase, not an assertion that it worked. Only when evidence cannot be inlined (screenshot, oversized output) park it outside every repo working tree — a scratchpad dir, or wherever the user asked proof to land — and cite the path, still summarizing inline.
+3. Compare against the expectation and assign a verdict: **PROVEN** (evidence shows expected), **REFUTED** (evidence contradicts expected), **BLOCKED** (genuinely could not run — state precisely what stopped it).
+
+The prover modifies no source. It observes and reports; fix agents fix. REFUTED is a *successful* outcome for a prover — finding a real gap between claim and reality is the job.
+
+**Step 4: Report**
+
+```
+[Phase 3] Proof — <repo>
+  ✓ P1 PROVEN   GET /api/foo returns the new `status` field
+      curl -s localhost:8080/api/foo
+      evidence: {"id":7,"status":"active"}
+  ✗ P2 REFUTED  Dashboard shows the archived count
+      evidence: panel renders "—"; archived_count absent from the response payload
+  ⚠ P3 BLOCKED  Migration applies cleanly on a prod-sized dataset
+      no prod-sized fixture available locally
+  ⚠ P4 MANUAL   Screen-reader announces the new control
+      needs a human with VoiceOver
+
+  1 refuted → CRITICAL, triggers another iteration
+  2 warnings (1 blocked, 1 manual) → reported to the user, do not block
+```
+
+Carry each obligation's `{ id, claim, class, method, expected, evidence, artifact, verdict }` into the Review Phase and, at the end of the loop, into the Phase 4 report.
+
 ### Review Phase
 
-Invoke Wigsy to review ALL implemented code, including test results if tests were run:
+Invoke Wigsy to review ALL implemented code, including test results and the prover's evidence:
 
 **Context for Wigsy:**
 
@@ -996,11 +1149,37 @@ TEST RESULTS:
  - If no tests found: "⚠ No test command detected - implementation lacks test coverage"
  - If tests timed out: "✗ Tests timed out after 10 minutes - investigate performance or deadlock issues"]
 
+PROOF RESULTS:
+[Every obligation from the Proof Phase with its class, method, expected, evidence, and verdict]
+
 ITERATION: ${N} of ${MAX_ITERATIONS}
+
+PROOF AUDIT: the prover ran independently of the implementers. Audit its work rather than
+taking it at face value:
+- A MANUAL or BLOCKED label on something the diff shows IS runnable (an HTTP endpoint, a CLI
+  flag, a query, a pure function, a page the dev server can serve) — CRITICAL. This is the
+  prime way the gate gets gamed: mislabel the obligation, skip the work, look clean.
+- Evidence that would look IDENTICAL if the change were reverted (a green suite standing in
+  for a behavioral claim, a 200 with an unchecked body, a screenshot of an untouched page) —
+  CRITICAL. It proves nothing about the claim.
+- A success criterion in the plan with NO obligation covering it — CRITICAL.
+- Evidence that paraphrases or asserts success instead of quoting the raw output — WARNING.
+- A genuinely BLOCKED or MANUAL obligation with an honest reason — WARNING, and say what the
+  human must do.
+Every REFUTED obligation is CRITICAL: direct evidence the change misses the plan.
+
+EMPTY-WORK CHECK — a diffstat is not a diff. For any work item reported as implemented, check that it
+actually changed PRODUCTION code: strip comments and blank lines and see what is left. A change that
+adds only comments, only a test pinning behaviour that already existed, or only docs — while its
+summary reads as though the item was built — is CRITICAL. It is the most expensive failure available
+here, because it looks like work in every view except this one, and it buries a refutation the human
+needed. (Real case: "+39 lines" in the stat, empty production diff, the feature had shipped months
+earlier and nobody said so.) An HONEST empty diff — "I implemented nothing, the plan is wrong, here is
+the evidence" — is NOT a finding. That is the correct outcome; say so in POSITIVE and let it stand.
 
 Provide feedback in the following categories:
 
-CRITICAL: Issues that MUST be fixed (security, correctness, breaking bugs, test failures)
+CRITICAL: Issues that MUST be fixed (security, correctness, breaking bugs, test failures, refuted proof obligations)
 WARNING: Issues that SHOULD be fixed (code quality, best practices, potential bugs, dead code/cruft)
 SUGGESTION: Issues that COULD be improved (style, optimization, clarity)
 POSITIVE: Things done well
@@ -1032,40 +1211,70 @@ Severity: contract-breaking drift (breaks a contract or leaves a consumer repo s
 
 ### Loop Decision Logic
 
-Analyze test results and Wigsy's feedback together:
+Analyze test results, proof results, and Wigsy's feedback together:
 
 **Count issues by category:**
 - TEST_FAILURE_COUNT = number of failed tests (from Test Execution Phase)
-- CRITICAL_COUNT = number of CRITICAL issues from Wigsy (includes test failures)
-- WARNING_COUNT = number of WARNING issues from Wigsy
+- REFUTED_COUNT = number of REFUTED proof obligations (from Proof Phase)
+- CRITICAL_COUNT = number of CRITICAL issues from Wigsy (includes test failures and refuted obligations)
+- WARNING_COUNT = number of WARNING issues from Wigsy (includes blocked/manual obligations)
 
-**Note:** Test failures are automatically counted as CRITICAL issues. If tests failed,
-CRITICAL_COUNT will include those failures plus any other critical issues Wigsy found.
+**Note:** Test failures and refuted obligations are automatically counted as CRITICAL issues.
+BLOCKED and MANUAL obligations are WARNINGS carried to the user, never blockers — the gate is
+on proof that is cheap to run, and Wigsy's audit is what stops those labels being abused.
+
+**WARNINGS DO NOT BLOCK.** They used to, and it turned the loop into a treadmill: fix agents
+surface warnings as fast as they close them, so the count wanders rather than converging (a real
+run went 8 → 4 → 5 → 1 → 3 across five iterations, hit the cap, and reported PARTIAL having done
+everything asked). Worse, chasing them to zero drags in unscoped work — a change specced as "one
+field plus four small debts" returned 3,191 insertions with an unrelated de-flaking campaign
+attached, because every pass found more warnings to fix. Warnings go in the report for the human
+to judge. If something genuinely must block, it is CRITICAL — categorize it that way rather than
+relying on a warning to stop the run.
 
 **Decision tree:**
 
-1. **If TEST_FAILURE_COUNT == 0 AND CRITICAL_COUNT == 0 AND WARNING_COUNT == 0:**
+1. **If TEST_FAILURE_COUNT == 0 AND REFUTED_COUNT == 0 AND CRITICAL_COUNT == 0:**
    - SUCCESS - Proceed to Phase 4 (Completion)
-   - All tests passed and no code review issues found
+   - Tests pass, every mechanical obligation is discharged, and review has no criticals
+   - Any WARNING_COUNT is reported, not fixed
 
-2. **If (TEST_FAILURE_COUNT > 0 OR CRITICAL_COUNT > 0 OR WARNING_COUNT > 0) AND iteration < MAX_ITERATIONS:**
+2. **If (TEST_FAILURE_COUNT > 0 OR REFUTED_COUNT > 0 OR CRITICAL_COUNT > 0) AND iteration < MAX_ITERATIONS:**
    - Increment iteration counter
    - Report:
      ```
      [Phase 3] Review - Iteration ${N}
        [If test failures:]
        ✗ Tests: ${TEST_FAILURE_COUNT} failed
+       [If refuted obligations:]
+       ✗ Proof: ${REFUTED_COUNT} refuted
        [Always:]
        ⚠ Wigsy found issues:
-         - CRITICAL: ${CRITICAL_COUNT} (includes ${TEST_FAILURE_COUNT} test failures)
+         - CRITICAL: ${CRITICAL_COUNT} (includes ${TEST_FAILURE_COUNT} test failures, ${REFUTED_COUNT} refuted obligations)
          - WARNING: ${WARNING_COUNT}
          - SUGGESTION: ${SUGGESTION_COUNT}
        → Starting iteration ${N+1} to address feedback...
      ```
    - Return to Implementation Phase with:
      - Test failure details
-     - Wigsy's feedback
+     - Refuted proof obligations: the claim, the method, what was expected, and the evidence
+       actually observed. Instruct the fixer to change the BEHAVIOR so the same method yields
+       the expected result — never to weaken the claim, rewrite the plan, or special-case the
+       prover's command. The identical obligation is re-proven next round.
+     - Wigsy's CRITICAL feedback
      - Instructions to fix failing tests
+   - Dispatch fix agents for the BLOCKERS only — the failing tests, the REFUTED obligations, and
+     every CRITICAL item. A work stream that is green-but-warned gets no agent: handing one to a
+     stream with nothing blocking it just sends it looking for something to change, and that is
+     where scope creep enters.
+   - Tell every fix agent explicitly: **warnings are NOT blockers and you were not dispatched to
+     clear them.** Fix a warning only where it sits in code this plan already touches and the fix
+     is incidental. Do NOT go looking for warnings to close, and do NOT touch files outside the
+     plan's scope to do it. Leave them; the report carries them to the human.
+   - Tell every fix agent: if a blocker is telling you the PLAN is wrong — the thing it asks for is
+     already done, or rests on something untrue of this repo — STOP and say so plainly in your
+     summary rather than finding adjacent work to do. Reporting a refuted plan is a successful
+     outcome.
 
 3. **If iteration >= MAX_ITERATIONS:**
    - PARTIAL COMPLETION - Proceed to Phase 4 with warnings
@@ -1293,17 +1502,20 @@ Report:
 **SUCCESS Criteria:**
 - All iterations completed with Wigsy approval
 - All tests passed (or no tests found)
+- Every mechanical proof obligation PROVEN — no REFUTED obligations
+  (BLOCKED/MANUAL obligations may remain; they are reported to the user, not blockers)
 - No CRITICAL issues remaining
-- No WARNING issues remaining
-- No dead code or cruft flagged in final review
-- No coupled sites left stale — docs and cross-repo contracts updated in lockstep with the code
+- No coupled sites left stale where the drift breaks a contract or leaves a consumer repo stale
+- WARNING issues MAY remain — they are reported for the user to judge, never chased (see the
+  Loop Decision Logic for why); the same applies to cruft and doc/comment drift flagged as warnings
 
 **PARTIAL Criteria:**
 - Maximum iterations reached
-- Tests still failing OR CRITICAL or WARNING issues remain
+- Tests still failing OR proof obligations still REFUTED OR CRITICAL issues remain
 
 **FAILED Criteria:**
 - Agent not available (caught in Phase 0)
+- A plan premise re-checked FALSIFIED (Phase 1) — the plan rests on something that is not true of the current code, and nothing was implemented
 - Critical error during execution
 - Unable to complete any implementation
 
@@ -1323,11 +1535,62 @@ SUMMARY:
   ✓ Agents Involved: [list of agents and roles]
   ✓ Files Changed: [total count]
   ✓ Tests: [X tests passed in Y.Ys] OR [No tests found]
-  ✓ Code Review: Passed (no critical or warning issues)
+  ✓ Premises: [N re-checked, all verified] [+ "; K unverifiable" if any] OR [None in plan]
+  ✓ Proof: [N of M obligations proven] [+ "; K left for you" if any blocked/manual]
+  ✓ Code Review: Passed (no critical issues) [+ "; N warnings for you to judge" if any]
 
 WHAT WAS IMPLEMENTED:
 [Concise bullet-point summary of major changes]
 
+PREMISES:
+[From the Phase 1 re-check. The plan's load-bearing claims about the current system, re-checked
+ before implementation — one line per VERIFIED premise with the evidence that settles it.
+ UNVERIFIABLE ones go under NOT PROVEN — REQUIRES YOU instead. Omit this section entirely when
+ the plan had no ## Premises section — a vacuous "premises: ok" is worse than silence.]
+
+  ✓ A1  The auth middleware runs before the rate limiter
+        rg -n 'r\.Use\(' cmd/server/main.go → 42: r.Use(auth.Middleware); 43: r.Use(rate.Limiter)
+
+PROOF:
+[From the Proof Phase's final iteration. One line per obligation: the claim, and the evidence
+ that settles it — the actual output, not "verified". Include the method so the user can re-run it.]
+
+  ✓ P1  GET /api/foo returns the new `status` field
+        curl -s localhost:8080/api/foo → {"id":7,"status":"active"}
+  ✓ P2  Archived rows are excluded from the default query
+        SELECT count(*) FROM v_active → 41 (was 47; the 6 archived rows are gone)
+
+[If any BLOCKED or MANUAL obligation, or any UNVERIFIABLE premise — this section is mandatory
+ whenever they exist, and never buried:]
+
+NOT PROVEN — REQUIRES YOU:
+  ⚠ P3  Migration applies cleanly on a prod-sized dataset  (BLOCKED)
+        Why: no prod-sized fixture available locally
+        To discharge: [what the user should run/do]
+  ⚠ P4  Screen-reader announces the new control  (MANUAL)
+        To discharge: [what the user should run/do]
+  ⚠ A3  The vendor's /v2 endpoint returns 410 for archived records  (PREMISE, UNVERIFIABLE)
+        Why: needs the vendor's production API; no sandbox available
+        The plan assumed this and it was never confirmed. If it is false: [what in the plan
+        depends on it — from the premise's "why load-bearing"]
+        To discharge: [what the user should run/do]
+
+These were NOT verified. The run is SUCCESS on everything that could be proven mechanically;
+these criteria remain claims until you check them. An unverifiable premise is the sharper one:
+a criterion that went unproven means the change might not do what was intended, but a premise
+that went unchecked means the plan itself might have been aimed wrong.
+
+
+[If Wigsy raised any WARNINGs — mandatory whenever the count is non-zero. Warnings no longer
+ block the loop, which means this section is the ONLY place they reach the user: drop it and the
+ change does not relax a gate, it deletes the findings. List every one; a count is not a finding.]
+
+WARNINGS — REPORTED, NOT FIXED (${WARNING_COUNT}):
+  ⚠ <repo> path/file:line — description → recommended fix
+
+Deliberately left alone. Chasing warnings to zero is what turned this loop into a treadmill and
+dragged unscoped work into runs. If one of these should have blocked, it was mis-categorized — it
+wanted to be CRITICAL.
 NEXT STEPS:
 - Review the changes with: git diff
 - Test the implementation
@@ -1354,12 +1617,22 @@ SUMMARY:
   ✓ Agents Involved: [list of agents and roles]
   ✓ Files Changed: [total count]
   ⚠ Tests: [If failed: "${TEST_FAILURE_COUNT} tests still failing"] OR [If passed: "Passed"]
+  ✓ Premises: [N re-checked, all verified] [+ "; K unverifiable" if any] OR [None in plan]
+  ⚠ Proof: [N of M obligations proven; ${REFUTED_COUNT} refuted]
   ⚠ Code Review: Partial (issues remain)
 
 WHAT WAS IMPLEMENTED:
 [Concise bullet-point summary of major changes]
 
 REMAINING ISSUES:
+
+[If refuted obligations exist — list FIRST: these are criteria the plan claimed and the
+ evidence says are not met, which matters more than a red test:]
+REFUTED PROOF OBLIGATIONS (${REFUTED_COUNT}):
+  ✗ P2  Dashboard shows the archived count
+        method:   screenshot of localhost:3000/dashboard
+        expected: panel shows a non-zero archived count
+        evidence: panel renders "—"; archived_count absent from the response payload
 
 [If test failures exist:]
 TEST FAILURES (${TEST_FAILURE_COUNT}):
@@ -1411,6 +1684,44 @@ No changes have been made to the codebase.
 ═══════════════════════════════════════════════════════════
 ```
 
+**For FAILED — falsified premise (aborted in Phase 1, before implementation):**
+
+The status is FAILED (nothing implemented), but the cause is the plan, not the run — so report it as its own thing rather than as a generic failure. The user's next move is to fix the plan, and they cannot do that from "a premise failed": name the premise, quote what was expected against what was actually observed, and say what in the plan depended on it.
+
+```
+═══════════════════════════════════════════════════════════
+IMPLEMENTATION ABORTED - FALSIFIED PREMISE
+═══════════════════════════════════════════════════════════
+
+The plan rests on a premise that no longer holds. Nothing was implemented.
+
+Implementing a plan whose premise is false produces a correct implementation of the wrong
+thing — and nothing downstream would catch it: the prover would faithfully confirm the code
+does exactly what the plan said, and the plan is what is wrong.
+
+FALSIFIED (${FALSIFIED_COUNT}):
+  ✗ A2  The events table has no index on (tenant_id, created_at)
+        why load-bearing: the plan's Phase 1 adds that index as the fix for the slow query
+        method:   \di events*
+        expected: no index covering (tenant_id, created_at)
+        observed: "idx_events_tenant_created" btree (tenant_id, created_at)
+        → the index already exists, so the plan's root cause is wrong
+
+[If any others were checked:]
+ALSO CHECKED:
+  ✓ A1 VERIFIED       [claim]
+  ⚠ A3 UNVERIFIABLE   [claim] — [why out of reach]
+
+WHAT TO DO:
+- The plan needs revisiting, not the code. Re-run /create-plan — it re-ranks the hypotheses
+  in light of this evidence and re-selects, which is the point of catching this here — or
+  correct the premise and the design that depends on it by hand.
+- Then re-run /implement-plan.
+
+No changes have been made to any repository.
+═══════════════════════════════════════════════════════════
+```
+
 ## Error Handling
 
 ### Missing Agents (Phase 0)
@@ -1450,11 +1761,13 @@ No changes have been made to the codebase.
 4. **Graceful Degradation**: Handle missing agents and failures without crashing
 5. **Quality Gates**: Do not proceed past max iterations - report partial status
 6. **Test Verification**: Always attempt to run tests and treat failures as CRITICAL issues
-7. **Conflict Resolution**: Make best-effort automatic resolution of merge conflicts
-8. **Consultant Pattern**: Dan advises Shane but never implements directly
-9. **Clean State**: Always clean up worktrees and temporary branches
-10. **Actionable Output**: Final report must clearly state next steps for user
-11. **No Drift**: Every coupled site changes in lockstep — cross-repo contracts, docs, and same-repo duplication. Implementers update all in-scope sites and call out out-of-scope ones; Wigsy flags contract-breaking drift as CRITICAL and doc/comment drift as WARNING, checking cross-repo consumers even when local tests pass green
+7. **Premises Hold**: The plan's premises are re-checked against the current repo before any code is written — independently, by re-running the plan's own check commands, never by reading the evidence the plan recorded when it was written. A FALSIFIED premise ABORTS the run: the plan rests on something that is not true, and implementing it would build the wrong thing correctly. Unverifiable premises pass through and are surfaced in the report. A plan with no premises skips the step cleanly — never invent them here
+8. **Prove It**: No success criterion is complete on an agent's say-so. An independent prover — never the implementer — exercises the change and reports the raw output it observed; evidence that would look the same if the change were absent is not evidence. Refuted obligations are CRITICAL; blocked/manual ones are handed to the user, never silently dropped
+9. **Conflict Resolution**: Make best-effort automatic resolution of merge conflicts
+10. **Consultant Pattern**: Dan advises Shane but never implements directly
+11. **Clean State**: Always clean up worktrees and temporary branches
+12. **Actionable Output**: Final report must clearly state next steps for user, and must surface every unproven criterion as unproven and every unverified premise as unverified
+13. **No Drift**: Every coupled site changes in lockstep — cross-repo contracts, docs, and same-repo duplication. Implementers update all in-scope sites and call out out-of-scope ones; Wigsy flags contract-breaking drift as CRITICAL and doc/comment drift as WARNING, checking cross-repo consumers even when local tests pass green
 
 ## Execution Flow Summary
 
@@ -1468,6 +1781,12 @@ Phase 0: Agent Detection & Context Setup
   └─ If available → Proceed
 
 Phase 1: Plan Review
+  ├─ Premise re-check (FIRST, before the panel — one cheap independent agent):
+  │   ├─ Read the plan's ## Premises; no section → skip cleanly (never invent premises)
+  │   ├─ Re-run each method against the CURRENT repo (not the plan's recorded evidence)
+  │   ├─ Verdict per premise: VERIFIED / FALSIFIED / UNVERIFIABLE
+  │   ├─ Any FALSIFIED → ABORT to Phase 4 FAILED (name the premise, expected vs observed)
+  │   └─ UNVERIFIABLE → carried to the final report, never blocking
   ├─ Eric reviews architecture (parallel)
   ├─ Dan reviews database if needed (parallel)
   ├─ Wigsy reviews security (parallel)
@@ -1506,21 +1825,31 @@ Phase 3: Implementation with Review Loop (max 5 review iterations)
   │   ├─ Merge all agents' final work into main
   │   └─ Resolve any cross-agent conflicts
   │
-  ├─ Test Execution (NEW):
+  ├─ Test Execution (parallel with Proof):
   │   ├─ Detect test command (just test, npm test, go test, etc.)
   │   ├─ Run tests in main worktree with timeout
   │   ├─ Parse test results (pass/fail counts, error messages)
   │   ├─ Structure test failures as CRITICAL issues
   │   └─ Report test execution status
   │
-  ├─ Review: Wigsy reviews all integrated changes + test results
-  │   ├─ Test failures included as CRITICAL issues
+  ├─ Proof (parallel with Test Execution) — independent prover, never the implementer:
+  │   ├─ Take the plan's Proof Obligations (or derive from Success Criteria), freeze them
+  │   ├─ Classify each MECHANICAL (runnable — the default) or MANUAL
+  │   ├─ Exercise the running system; record the RAW output inline as evidence
+  │   ├─ Verdict per obligation: PROVEN / REFUTED / BLOCKED / MANUAL_PENDING
+  │   └─ REFUTED = CRITICAL; BLOCKED/MANUAL = WARNING carried to the user
+  │
+  ├─ Review: Wigsy reviews all integrated changes + test results + proof evidence
+  │   ├─ Test failures and refuted obligations included as CRITICAL issues
+  │   ├─ Proof audit: bogus MANUAL/BLOCKED labels, vacuous evidence, uncovered
+  │   │   success criteria (all CRITICAL)
   │   ├─ Cruft + coupled-site drift flagged (contract-breaking drift CRITICAL, doc/comment WARNING)
   │   └─ No test coverage noted as WARNING
   │
-  ├─ Review iteration decision:
-  │   ├─ If tests passed AND no issues → Documentation Phase
-  │   ├─ If test failures OR issues AND iterations < 5 → Re-run implementation
+  ├─ Review iteration decision (warnings never block — reported, not chased):
+  │   ├─ If tests passed AND nothing refuted AND no criticals → Documentation Phase
+  │   ├─ If failures OR refuted OR criticals AND iterations < 5 → Re-run implementation
+  │   │   (fix agents dispatched for BLOCKERS only; warnings explicitly not their job)
   │   └─ If max iterations → Documentation Phase (partial)
   │
   ├─ Documentation Phase (conditional):
@@ -1531,6 +1860,8 @@ Phase 3: Implementation with Review Loop (max 5 review iterations)
   └─ Report progress (rounds, integrations, tests, reviews, docs)
 
 Phase 4: Completion
+  ├─ (Reached early and directly from Phase 1 on a falsified premise: FAILED, nothing
+  │   implemented, report the premise and send the user back to the plan)
   ├─ Cleanup: Remove all worktrees and temporary branches
   │   ├─ Work item worktrees
   │   ├─ Work item branches
@@ -1571,5 +1902,13 @@ Phase 4: Completion
 - Treats test failures as CRITICAL issues
 - Includes test results in Wigsy's review
 - Re-runs tests in each iteration until passing
+
+**Prove it:**
+- An independent prover — never the implementer — discharges the plan's proof obligations
+- Proves the plan's criteria are met, where tests only prove the suite is green
+- Evidence is the raw output inline; artifacts only for what cannot be inlined
+- Refuted obligations block like test failures; blocked/manual are handed to the user
+- Wigsy audits the proof, so obligations cannot be dodged by mislabelling them MANUAL
+- Obligations are frozen at iteration 1 and re-proven verbatim, so the bar cannot drift
 
 Now begin Phase 0. Analyze the plan provided in the conversation history and detect which agents are required.
