@@ -174,6 +174,18 @@ First re-check the plan's premises (below) — a cheap gate that stops the run i
 
 Run this FIRST, before the reviewer panel. It is one cheap agent, and it can end the run — there is no point spending the whole panel critiquing a plan whose foundation is about to be rejected. Invoke ONE plain agent: not an implementer, not a reviewer, and never an agent that had a hand in writing the plan.
 
+**Step 0: Does the plan COVER the run?**
+
+Before re-checking a single premise, check that the plan actually specifies the work this run was dispatched to do. Compare the `repos` set from Phase 2 against the plan: **every repo in `repos` must be named in the plan file.** If one is not, ABORT — same gate, same shape as a falsified premise (see Phase 4's "plan does not cover the run" report).
+
+This is not bureaucracy. A premise re-check on a plan that covers one of five repos **passes trivially and tells you nothing about the other four** — every `A*` was verified against the repo the plan was written for, so the gate reports VERIFIED and waves through work it never examined. That is precisely how the guard gets bypassed: not by falsifying a premise, but by scoping the plan narrower than the run.
+
+It happened, and it cost 4.4 hours and a `PARTIAL`: a five-repo fan-out was dispatched against a plan whose header named one repo and mentioned the other four zero times. Every premise verified — against that one repo — while the central claim of the first one was **outright false** for two of the siblings, which used a different scoping mechanism entirely. The reviewer panel's first finding was "the plan does not cover the run", by which point the worktrees were already cut.
+
+The tell to watch for in yourself: **if the real specification is living in the work-item `description` fields rather than in the plan file, the plan does not cover the run.** Item descriptions are for scoping and emphasis; they are not a substitute for a plan, they are invisible to the premise gate, and nothing re-checks them. Stop and send the user back to `/create-plan` (or fix the plan by hand) instead of compensating with a longer prompt.
+
+Applies to a single-repo run too: if the plan describes a different component, subsystem, or defect than the batches do, it does not cover the run.
+
 **Step 1: Read the plan's `## Premises` section.**
 
 Each entry gives an id (`A1`, `A2`, …), the claim, why it is load-bearing, the exact method that checks it, and what that method is expected to show.
@@ -187,6 +199,8 @@ Take the plan's claim and its method — the exact command that checks it — an
 Multi-repo plans: each premise is checked in the repo its method points at. A premise naming no repo belongs to the plan's primary repo.
 
 If the method no longer runs verbatim (a path moved, a command was renamed), adapt it minimally to check the SAME claim and say what changed. If it cannot run because the thing it points at no longer exists, that is usually evidence the premise is FALSE, not a reason to call it unverifiable — quote the error and rule on the claim.
+
+**Re-run it in EVERY repo the premise's claim ranges over, not just the one it was written in.** A premise checked in one repo and relied on in five is a measurement generalised past its sample, and it fails silently in the direction that hurts: VERIFIED, on evidence from the only repo where it happened to hold. If the claim is about "the promote gate" and the run touches five promote gates, the method runs five times and the verdict is the WEAKEST of them — one repo contradicting it makes the premise FALSIFIED, not "mostly verified". If re-running it elsewhere is genuinely impossible, narrow the premise to the repo you checked and say so, which will usually expose that the plan needed to be per-repo all along.
 
 **Step 3: Assign a verdict.**
 
@@ -1681,6 +1695,50 @@ RECOMMENDATIONS:
 [Specific suggestions for user to resolve the issue]
 
 No changes have been made to the codebase.
+═══════════════════════════════════════════════════════════
+```
+
+**For FAILED — plan does not cover the run (aborted at Phase 1 Step 0, before any premise was re-checked):**
+
+Nothing was implemented and no premise was even examined, because examining them would have been misleading — they would all have verified against the one repo the plan was written for. Say exactly which repos the run was dispatched for and which of them the plan names, so the user can see the gap rather than infer it.
+
+```
+═══════════════════════════════════════════════════════════
+IMPLEMENTATION ABORTED - PLAN DOES NOT COVER THE RUN
+═══════════════════════════════════════════════════════════
+
+The plan does not specify the work this run was dispatched to do. Nothing was
+implemented, and the premises were NOT re-checked — on a plan this much narrower
+than the run they would all have verified against the one repo it was written
+for, and reported a green gate over four repos nobody looked at.
+
+DISPATCHED FOR (${N} repos):
+  ${repoA}   ← named in the plan
+  ${repoB}   ← NOT named in the plan
+  ${repoC}   ← NOT named in the plan
+
+THE PLAN SAYS:
+  ${planPath}
+  "**Repos:** ${whatever the plan's scope line says}"
+  mentions of ${repoB}: 0
+  mentions of ${repoC}: 0
+
+WHY THIS IS A HARD STOP:
+Every premise in this plan was verified against ${repoA}. Re-checking them would
+report VERIFIED and prove nothing about ${repoB} or ${repoC} — the gate would
+wave through work it never examined. A premise that is true in one repo and
+asserted across five is the failure this stop exists to prevent.
+
+WHAT TO DO:
+- Re-run /create-plan for the FULL repo set so the premises are established
+  per-repo, or extend the plan by hand to name every repo and state what is
+  true of each.
+- If the real specification is currently living in the work-item descriptions
+  rather than the plan, that is the tell: move it into the plan. Item
+  descriptions are invisible to this gate and nothing re-checks them.
+- Then re-run /implement-plan.
+
+No changes have been made to any repository.
 ═══════════════════════════════════════════════════════════
 ```
 

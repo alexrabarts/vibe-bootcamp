@@ -1776,7 +1776,15 @@ Generate plan file with this structure:
 
 **Created:** [ISO 8601 timestamp]
 **Mode:** [DEBUGGING / FEATURE / REFACTOR / INVESTIGATION]
+**Repos:** [EVERY repository this plan covers, comma-separated — one entry even when there is only one]
 **Status:** READY FOR IMPLEMENTATION
+
+The `**Repos:**` line is not decoration: `/implement-plan` reads it and **aborts before
+touching anything** if it is dispatched for a repo this plan does not name. Every repo listed
+here must have its own premises — a premise verified in one repo and asserted across several is
+a measurement generalised past its sample, and it fails in the worst direction: VERIFIED, on
+evidence from the only repo where it happened to hold. If the work spans repos, either state per
+repo what is true of each, or write one plan per repo.
 
 ## Executive Summary
 
