@@ -139,6 +139,43 @@ present). In `refutation_attempt`, name the most load-bearing consumer, duplicat
 the plan failed to enumerate — cross-repo consumers are the easiest to miss.
 ```
 
+## load_bearing_coverage
+
+```
+Dimension: load_bearing_coverage. Score whether the plan states what the change makes newly
+LOAD-BEARING — the inverse of coupled_site_coverage. That dimension asks what must change WITH the
+change; this asks what becomes REQUIRED BY it: something that already exists, is already correct,
+and is entirely invisible until the change starts depending on it. A plan that enumerates its
+ripple effects perfectly and never asks this question still ships a change that passes every gate
+and then fails, because the thing it newly needs was never created.
+
+The shapes to look for: a value nothing read starts being read (so a config row / seeded record /
+rate that was empty becomes mandatory); a code path dormant *because* of the state being changed
+activates; a filter stops excluding, so consumers' assumptions about emptiness go live; a predicate
+that could never match now can, turning an always-green guard into a gate.
+
+The discriminator between a 5 and a 3 is TIMING. Naming the new dependency is easy; naming the
+MOMENT it binds is what makes the plan actionable, and that moment is usually NOT merge — it is the
+next rebuild, the migration apply, the flag flip. A plan that says "needs an FX rate" and merges
+safely, then breaks on the next scheduled rebuild, scored 3 and should have scored 5 by saying when.
+
+Anchors:
+5 — Each phase states what becomes newly required, WHERE it must exist, WHEN the dependency binds
+    (a specific event, not "before merge"), and whether absence fails loud or silent. Anything owned
+    outside the plan's control (an operator action, a product setting, another team's deploy) appears
+    in the rollout sequence as a blocking step with an owner. "None — nothing becomes newly required"
+    is a valid 5 where it is true and the plan shows it considered the question.
+3 — The new dependency is named but under-specified: no binding moment, or no owner for something the
+    plan cannot itself create, or loud-vs-silent unaddressed. An implementer would merge this and be
+    surprised later.
+1 — Not asked. The plan changes behavior that clearly starts depending on something new — a mapping,
+    a newly-populated column, a filter that stops excluding — and never says what that something is.
+
+In `evidence`, quote the plan's newly-load-bearing statement including its binding moment. In
+`refutation_attempt`, name the precondition the change creates that the plan did not: prefer one
+whose absence fails SILENTLY, and one the plan could not have created itself.
+```
+
 ## proof_adequacy
 
 ```
