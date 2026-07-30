@@ -94,6 +94,10 @@ into the score.
 - `coupled_site_coverage` — the plan enumerates the sites that must change in lockstep (cross-repo
   contract consumers, same-repo duplicated constants/enums/types, docs) so nothing drifts out of
   sync; DEBUGGING/FEATURE/REFACTOR (not INVESTIGATION)
+- `load_bearing_coverage` — the inverse of the above: the plan states what the change makes newly
+  REQUIRED (a config row, seeded record, permission or capacity that was inert and becomes a
+  precondition), WHEN that dependency binds — usually not at merge but the next rebuild / migration /
+  flag flip — and who creates it if the plan cannot; DEBUGGING/FEATURE/REFACTOR (not INVESTIGATION)
 - `proof_adequacy` — the plan's `## Proof Obligations` discharge the bar: one obligation per success
   criterion, methods that are real and runnable (not invented commands), expectations specific enough
   to call pass/fail, and — the standard the rest serves — evidence that **would look different if the

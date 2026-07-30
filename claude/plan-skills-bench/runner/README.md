@@ -46,10 +46,10 @@ the **median** score (normalized 0..1) and **majority** `matches_answer_key` int
 
 - Deterministic L3 (`acceptance_pass`) is always computed in `checks.py`; judges add the rest
   (`distinctness`, `evidence_grounding`, `correct_primary`, `checkpoint_leverage`, `actionability`,
-  `coupled_site_coverage`, `proof_adequacy`, `premise_verification` for create-plan; `criteria_met`,
+  `coupled_site_coverage`, `load_bearing_coverage`, `proof_adequacy`, `premise_verification` for create-plan; `criteria_met`,
   `proof_discharged`, `premises_rechecked`, `cruft_flagged`, `drift_caught` for implement-plan).
   `dimensions_for()` filters by mode and by which answer-key fields are present (e.g. INVESTIGATION
-  drops `correct_primary`, `coupled_site_coverage`, and `proof_adequacy` — it proposes no change, so it
+  drops `correct_primary`, `coupled_site_coverage`, `load_bearing_coverage`, and `proof_adequacy` — it proposes no change, so it
   has nothing to prove — and `premise_verification`, since it selects no hypothesis and designs no fix,
   leaving no ranking for a discriminating premise to reorder; `drift_caught` fires only when the answer
   key lists `coupled_sites`, mirroring `cruft_flagged`/`cruft_to_find`).

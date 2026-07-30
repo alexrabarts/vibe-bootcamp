@@ -174,8 +174,8 @@ def main() -> int:
     print("\n[7] L3 judges")
     tc = load_template("create-plan")
     check(bool(tc.preamble) and {"distinctness", "correct_primary", "checkpoint_leverage", "coupled_site_coverage",
-                                 "proof_adequacy", "premise_verification"} <= set(tc.dims),
-          "create-plan judge template: preamble + dimensions parsed (incl. premise_verification)")
+                                 "load_bearing_coverage", "proof_adequacy", "premise_verification"} <= set(tc.dims),
+          "create-plan judge template: preamble + dimensions parsed (incl. load_bearing_coverage)")
     ti = load_template("implement-plan")
     check({"criteria_met", "cruft_flagged", "drift_caught", "proof_discharged", "premises_rechecked"} <= set(ti.dims),
           "implement-plan judge template: dimensions parsed (incl. premises_rechecked)")
@@ -196,6 +196,12 @@ def main() -> int:
           "dimensions_for: C8 includes correct_primary (has true_primary)")
     check("coupled_site_coverage" in dimensions_for(by_id(scns, "C8"), RunArtifacts(used_checkpoint=True)),
           "dimensions_for: C8 (DEBUGGING) includes coupled_site_coverage")
+    # A judge dimension that is authored but never registered scores nothing and looks identical to
+    # one that scores well — so pin the wiring, not just the parse.
+    check("load_bearing_coverage" in dimensions_for(by_id(scns, "C8"), RunArtifacts(used_checkpoint=True)),
+          "dimensions_for: C8 (DEBUGGING) includes load_bearing_coverage")
+    check("load_bearing_coverage" not in dimensions_for(by_id(scns, "C4"), RunArtifacts()),
+          "dimensions_for: INVESTIGATION drops load_bearing_coverage (proposes no change)")
     check("cruft_flagged" in dimensions_for(by_id(scns, "I10"), RunArtifacts()),
           "dimensions_for: I10 includes cruft_flagged")
     check("drift_caught" in dimensions_for(by_id(scns, "I10"), RunArtifacts()),

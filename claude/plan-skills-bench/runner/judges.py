@@ -22,9 +22,9 @@ _JUDGE_DIR = Path(__file__).resolve().parent.parent / "judges"
 # Which L3 dimensions apply, by create-plan mode. acceptance_pass / convergence_efficiency are
 # deterministic (computed in checks.py), so they are NOT judged here.
 _CREATE_DIMS = {
-    "DEBUGGING": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "proof_adequacy", "premise_verification"],
-    "FEATURE": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "proof_adequacy", "premise_verification"],
-    "REFACTOR": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "proof_adequacy", "premise_verification"],
+    "DEBUGGING": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "load_bearing_coverage", "proof_adequacy", "premise_verification"],
+    "FEATURE": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "load_bearing_coverage", "proof_adequacy", "premise_verification"],
+    "REFACTOR": ["distinctness", "evidence_grounding", "correct_primary", "checkpoint_leverage", "actionability", "coupled_site_coverage", "load_bearing_coverage", "proof_adequacy", "premise_verification"],
     # INVESTIGATION plans propose no change, so they carry no success criteria to prove — and they
     # select no hypothesis and design no fix, so there is no ranking for a discriminating premise to
     # reorder and nothing that collapses if a belief is false. What an investigation asserts about the
